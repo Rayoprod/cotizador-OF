@@ -1,25 +1,29 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
-import { NgbModal, NgbModule } from '@ng-bootstrap/ng-bootstrap';
-
+import { NgbTypeaheadModule } from '@ng-bootstrap/ng-bootstrap'; // <-- MÓDULO AÑADIDO
+import { Observable, OperatorFunction } from 'rxjs';
+import { debounceTime, distinctUntilChanged, map } from 'rxjs/operators';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { ToastService } from '../../services/toast';
-import { PdfPreviewComponent } from '../pdf-preview/pdf-preview';
 
 export interface QuoteItem {
   id: number;
   descripcion: string;
   cantidad: number;
-  precioUnitario: number;
+  precioUnitario: number | null; // <-- CAMBIO: AHORA ACEPTA NULL
 }
 
 @Component({
   selector: 'app-quote-creator',
   standalone: true,
-  imports: [ CommonModule, FormsModule, CurrencyPipe, NgbModule ],
+  imports: [
+    CommonModule,
+    FormsModule,
+    CurrencyPipe,
+    NgbTypeaheadModule // <-- MÓDULO AÑADIDO
+  ],
   templateUrl: './quote-creator.html',
   styleUrls: ['./quote-creator.scss']
 })
@@ -28,68 +32,73 @@ export class QuoteCreator {
   cliente: string = '';
   fecha: string = '';
   items: QuoteItem[] = [];
-
   private nextId = 1;
   toastService = inject(ToastService);
-  private modalService = inject(NgbModal);
-  private sanitizer = inject(DomSanitizer);
 
-  constructor() { this.addItem(); }
-  addItem(): void { this.items.push({ id: this.nextId++, descripcion: '', cantidad: 1, precioUnitario: 0 }); }
-  removeItem(id: number): void { this.items = this.items.filter(item => item.id !== id); }
-  get subtotal(): number { return this.items.reduce((acc, item) => acc + (item.cantidad * item.precioUnitario), 0); }
-  get igv(): number { return this.subtotal * 0.18; }
-  get total(): number { return this.subtotal + this.igv; }
-  private formatCurrency(value: number): string {
+  // LISTA DE PRODUCTOS PARA AUTOCOMPLETADO
+  productosSugeridos: string[] = [
+    'Piedra chancada 1/2"',
+    'Piedra chancada 3/4"',
+    'Piedra chancada 1"',
+    'Arena gruesa (por m³)',
+    'Arena fina (por m³)',
+    'Hormigón"',
+  ];
+
+  constructor() {
+    this.addItem();
+  }
+
+  addItem(): void {
+    this.items.push({
+      id: this.nextId++,
+      descripcion: '',
+      cantidad: 1,
+      precioUnitario: null // <-- CAMBIO: EMPIEZA VACÍO
+    });
+  }
+
+  removeItem(id: number): void {
+    this.items = this.items.filter(item => item.id !== id);
+  }
+
+  get subtotal(): number {
+    return this.items.reduce((acc, item) => acc + (item.cantidad * (item.precioUnitario || 0)), 0);
+  }
+
+  get igv(): number {
+    return this.subtotal * 0.18;
+  }
+
+  get total(): number {
+    return this.subtotal + this.igv;
+  }
+
+  // LÓGICA PARA EL AUTOCOMPLETADO
+  search: OperatorFunction<string, readonly string[]> = (text$: Observable<string>) =>
+    text$.pipe(
+      debounceTime(200),
+      distinctUntilChanged(),
+      map((term) =>
+        term.length < 2 ? [] : this.productosSugeridos.filter((v) => v.toLowerCase().indexOf(term.toLowerCase()) > -1).slice(0, 10),
+      ),
+    );
+
+  private formatCurrency(value: number | null): string {
     const formatter = new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' });
     return formatter.format(value || 0).replace('PEN', 'S/ ');
   }
 
-  // MÉTODO generarPDF() ACTUALIZADO CON LÓGICA DIFERENTE PARA MÓVIL Y ESCRITORIO
-  async generarPDF(): Promise<void> {
-    const doc = this._crearDocumentoPDF();
-
-    // Generar nombre de archivo único
-    const now = new Date();
-    const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
-    const fileName = `Cotizacion_${this.cliente.replace(/ /g, '_') || 'cliente'}_${timestamp}.pdf`;
-
-    // Generar el PDF como un objeto Blob
-    const pdfBlob = doc.output('blob');
-
-    // --- LÓGICA INTELIGENTE ---
-    // Si el navegador es móvil y soporta la API de Compartir, la usamos.
-    if (navigator.share) {
-      const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
-      try {
-        await navigator.share({
-          title: `Cotización ${this.numeroCotizacion}`,
-          text: `Adjunto la cotización para ${this.cliente}.`,
-          files: [pdfFile],
-        });
-        this.toastService.show('¡Cotización compartida!', { classname: 'bg-success text-light', delay: 3000 });
-      } catch (error) {
-        this.toastService.show('La acción de compartir fue cancelada.', { classname: 'bg-info text-light', delay: 3000 });
-      }
-    } else {
-      // Si es un navegador de escritorio, abrimos el modal de vista previa.
-      const url = URL.createObjectURL(pdfBlob);
-      const safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
-
-      const modalRef = this.modalService.open(PdfPreviewComponent, { size: 'lg', centered: true });
-      modalRef.componentInstance.pdfUrl = safeUrl;
-      modalRef.componentInstance.pdfBlob = pdfBlob;
-      modalRef.componentInstance.fileName = fileName;
-
-      this.toastService.show('Vista previa generada.', { classname: 'bg-info text-light', delay: 3000 });
-    }
-  }
-
-  // Función privada para no repetir el código de creación del PDF
-  private _crearDocumentoPDF(): jsPDF {
+  generarPDF(): void {
     const doc = new jsPDF();
     const head = [['#', 'Descripción', 'Cant.', 'P. Unit.', 'Total']];
-    const body = this.items.map((item, index) => [ index + 1, item.descripcion, item.cantidad, this.formatCurrency(item.precioUnitario), this.formatCurrency(item.cantidad * item.precioUnitario) ]);
+    const body = this.items.map((item, index) => [
+      index + 1,
+      item.descripcion,
+      item.cantidad,
+      this.formatCurrency(item.precioUnitario),
+      this.formatCurrency(item.cantidad * (item.precioUnitario || 0))
+    ]);
 
     autoTable(doc, {
       head: head, body: body, startY: 55, theme: 'grid',
@@ -107,12 +116,13 @@ export class QuoteCreator {
 
     const finalY = (doc as any).lastAutoTable.finalY;
     const summaryX = 130;
+    // ... (resto del código del PDF se mantiene igual)
     doc.setFontSize(11); doc.setFont('helvetica', 'normal');
     doc.text("Subtotal:", summaryX, finalY + 10); doc.text(this.formatCurrency(this.subtotal), 195, finalY + 10, { align: 'right' });
     doc.text("IGV (18%):", summaryX, finalY + 17); doc.text(this.formatCurrency(this.igv), 195, finalY + 17, { align: 'right' });
     doc.setFontSize(14); doc.setFont('helvetica', 'bold');
     doc.text("TOTAL:", summaryX, finalY + 25); doc.text(this.formatCurrency(this.total), 195, finalY + 25, { align: 'right' });
 
-    return doc;
+    doc.save(`Cotizacion-${this.numeroCotizacion}.pdf`);
   }
 }

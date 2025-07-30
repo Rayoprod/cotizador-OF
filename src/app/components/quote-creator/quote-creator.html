@@ -3,11 +3,11 @@
     <div class="card-header bg-light p-4">
       <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
         <div class="mb-3 mb-md-0">
-          <img src="../../../assets/logowym.png" alt="Logo" class="logo-image">
+          <img src="assets/logo.png" alt="Logo" class="logo-image">
         </div>
         <div class="text-md-end">
           <h1 class="h2 mb-0">COTIZACIÓN</h1>
-          <span>{{ numeroCotizacion }}</span>
+          <input type="text" class="form-control form-control-sm text-md-end" [(ngModel)]="numeroCotizacion" placeholder="N° Cotización">
         </div>
       </div>
     </div>
@@ -15,11 +15,11 @@
       <div class="row mb-4">
         <div class="col-md-7 mb-3 mb-md-0">
           <label for="cliente" class="form-label">Cliente</label>
-          <input type="text" id="cliente" class="form-control" [(ngModel)]="cliente">
+          <input type="text" id="cliente" class="form-control" [(ngModel)]="cliente" placeholder="Nombre del cliente">
         </div>
         <div class="col-md-5">
           <label for="fecha" class="form-label">Fecha</label>
-          <input type="text" id="fecha" class="form-control" [(ngModel)]="fecha">
+          <input type="text" id="fecha" class="form-control" [(ngModel)]="fecha" placeholder="DD/MM/AAAA">
         </div>
       </div>
 
@@ -38,14 +38,19 @@
           </thead>
           <tbody>
             <tr *ngFor="let item of items; let i = index" class="item-row">
-              <td class="item-number" data-label="#">{{ i + 1 }}</td>
-              <td data-label="Descripción"><input type="text" class="form-control" [(ngModel)]="item.descripcion"></td>
-              <td data-label="Cantidad"><input type="number" class="form-control text-end" [(ngModel)]="item.cantidad">
+              <th scope="row" class="item-number" data-label="#">{{ i + 1 }}</th>
+              <td data-label="Descripción">
+                <input
+                  type="text"
+                  class="form-control"
+                  [(ngModel)]="item.descripcion"
+                  [ngbTypeahead]="search"
+                  placeholder="Escribe para buscar..."
+                >
               </td>
-              <td data-label="P. Unitario"><input type="number" class="form-control text-end"
-                  [(ngModel)]="item.precioUnitario"></td>
-              <td data-label="Total" class="text-end fw-bold">{{ (item.cantidad * item.precioUnitario) | currency:'S/ '
-                }}</td>
+              <td data-label="Cantidad"><input type="number" class="form-control text-end" [(ngModel)]="item.cantidad" placeholder="1"></td>
+              <td data-label="P. Unitario"><input type="number" class="form-control text-end" [(ngModel)]="item.precioUnitario" placeholder="0.00"></td>
+              <td data-label="Total" class="text-end fw-bold">{{ (item.cantidad * (item.precioUnitario || 0)) | currency:'S/ ' }}</td>
               <td class="text-center">
                 <button class="btn btn-outline-danger btn-sm" (click)="removeItem(item.id)">
                   &times;
