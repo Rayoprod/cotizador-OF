@@ -40,9 +40,12 @@
             <tr *ngFor="let item of items; let i = index" class="item-row">
               <td class="item-number" data-label="#">{{ i + 1 }}</td>
               <td data-label="Descripción"><input type="text" class="form-control" [(ngModel)]="item.descripcion"></td>
-              <td data-label="Cantidad"><input type="number" class="form-control text-end" [(ngModel)]="item.cantidad"></td>
-              <td data-label="P. Unitario"><input type="number" class="form-control text-end" [(ngModel)]="item.precioUnitario"></td>
-              <td data-label="Total" class="text-end fw-bold">{{ (item.cantidad * item.precioUnitario) | currency:'S/ ' }}</td>
+              <td data-label="Cantidad"><input type="number" class="form-control text-end" [(ngModel)]="item.cantidad">
+              </td>
+              <td data-label="P. Unitario"><input type="number" class="form-control text-end"
+                  [(ngModel)]="item.precioUnitario"></td>
+              <td data-label="Total" class="text-end fw-bold">{{ (item.cantidad * item.precioUnitario) | currency:'S/ '
+                }}</td>
               <td class="text-center">
                 <button class="btn btn-outline-danger btn-sm" (click)="removeItem(item.id)">
                   &times;
