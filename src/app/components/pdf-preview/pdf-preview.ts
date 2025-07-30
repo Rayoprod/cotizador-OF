@@ -15,12 +15,10 @@ export class PdfPreviewComponent {
   @Input() pdfBlob!: Blob;
   @Input() fileName!: string;
 
-  // Variable para saber si el navegador soporta la función de compartir
   canShare: boolean = !!navigator.share;
 
   constructor(public activeModal: NgbActiveModal, private sanitizer: DomSanitizer) {}
 
-  // Función para descargar el archivo
   download() {
     const link = document.createElement('a');
     link.href = this.sanitizer.bypassSecurityTrustUrl(URL.createObjectURL(this.pdfBlob)) as string;
@@ -30,7 +28,6 @@ export class PdfPreviewComponent {
     document.body.removeChild(link);
   }
 
-  // Función para compartir el archivo (solo en móviles)
   async share() {
     const pdfFile = new File([this.pdfBlob], this.fileName, { type: 'application/pdf' });
     if (navigator.canShare({ files: [pdfFile] })) {
@@ -40,6 +37,7 @@ export class PdfPreviewComponent {
           text: `Adjunto la cotización ${this.fileName}`,
           files: [pdfFile],
         });
+        this.activeModal.close(); // Cierra el modal después de compartir
       } catch (error) {
         console.error('Error al compartir:', error);
       }

@@ -1,13 +1,13 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DomSanitizer } from '@angular/platform-browser'; // Importar DomSanitizer
-import { NgbModal, NgbModule } from '@ng-bootstrap/ng-bootstrap'; // Importar NgbModal
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { NgbModal, NgbModule } from '@ng-bootstrap/ng-bootstrap'; // <-- Módulo clave
 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { ToastService } from '../../services/toast';
-import { PdfPreviewComponent } from '../pdf-preview/pdf-preview'; // Importar nuestro nuevo componente
+import { PdfPreviewComponent } from '../pdf-preview/pdf-preview';
 
 export interface QuoteItem {
   id: number;
@@ -19,20 +19,20 @@ export interface QuoteItem {
 @Component({
   selector: 'app-quote-creator',
   standalone: true,
-  imports: [ CommonModule, FormsModule, CurrencyPipe, NgbModule ], // Añadir NgbModule
+  imports: [ CommonModule, FormsModule, CurrencyPipe, NgbModule ], // <-- Módulo añadido aquí
   templateUrl: './quote-creator.html',
   styleUrls: ['./quote-creator.scss']
 })
 export class QuoteCreator {
-  // ... (todas las propiedades como numeroCotizacion, cliente, etc. se mantienen igual)
+  // ... (tus propiedades se mantienen igual)
   numeroCotizacion: string = '';
   cliente: string = '';
   fecha: string = '';
   items: QuoteItem[] = [];
   private nextId = 1;
   toastService = inject(ToastService);
-  private modalService = inject(NgbModal); // Inyectar el servicio de modales
-  private sanitizer = inject(DomSanitizer); // Inyectar el DomSanitizer
+  private modalService = inject(NgbModal);
+  private sanitizer = inject(DomSanitizer);
 
   constructor() { this.addItem(); }
   addItem(): void { this.items.push({ id: this.nextId++, descripcion: '', cantidad: 1, precioUnitario: 0 }); }
@@ -45,8 +45,31 @@ export class QuoteCreator {
     return formatter.format(value || 0).replace('PEN', 'S/ ');
   }
 
-  // MÉTODO generarPDF() ACTUALIZADO PARA ABRIR EL MODAL
+  // MÉTODO PARA GENERAR Y ABRIR LA VISTA PREVIA
   generarPDF(): void {
+    const doc = this._crearDocumentoPDF();
+    const pdfBlob = doc.output('blob');
+
+    // Crear nombre de archivo único
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+    const fileName = `Cotizacion_${this.cliente.replace(/ /g, '_') || 'cliente'}_${timestamp}.pdf`;
+
+    // Crear URL segura para el iframe
+    const url = URL.createObjectURL(pdfBlob);
+    const safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
+
+    // Abrir el modal con el componente de vista previa
+    const modalRef = this.modalService.open(PdfPreviewComponent, { size: 'lg', centered: true });
+    modalRef.componentInstance.pdfUrl = safeUrl;
+    modalRef.componentInstance.pdfBlob = pdfBlob;
+    modalRef.componentInstance.fileName = fileName;
+
+    this.toastService.show('Vista previa generada.', { classname: 'bg-info text-light', delay: 3000 });
+  }
+
+  // Función privada para no repetir el código de creación del PDF
+  private _crearDocumentoPDF(): jsPDF {
     const doc = new jsPDF();
     const head = [['#', 'Descripción', 'Cant.', 'P. Unit.', 'Total']];
     const body = this.items.map((item, index) => [ index + 1, item.descripcion, item.cantidad, this.formatCurrency(item.precioUnitario), this.formatCurrency(item.cantidad * item.precioUnitario) ]);
@@ -73,22 +96,6 @@ export class QuoteCreator {
     doc.setFontSize(14); doc.setFont('helvetica', 'bold');
     doc.text("TOTAL:", summaryX, finalY + 25); doc.text(this.formatCurrency(this.total), 195, finalY + 25, { align: 'right' });
 
-    // Generar nombre de archivo y el PDF como Blob
-    const now = new Date();
-    const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
-    const fileName = `Cotizacion_${this.cliente.replace(/ /g, '_') || 'cliente'}_${timestamp}.pdf`;
-    const pdfBlob = doc.output('blob');
-
-    // Crear la URL segura para el iframe
-    const url = URL.createObjectURL(pdfBlob);
-    const safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
-
-    // Abrir el modal
-    const modalRef = this.modalService.open(PdfPreviewComponent, { size: 'lg', centered: true });
-    modalRef.componentInstance.pdfUrl = safeUrl;
-    modalRef.componentInstance.pdfBlob = pdfBlob;
-    modalRef.componentInstance.fileName = fileName;
-
-    this.toastService.show('PDF generado. Revisa la vista previa.', { classname: 'bg-success text-light', delay: 3000 });
+    return doc;
   }
 }
