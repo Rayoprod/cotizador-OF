@@ -3,7 +3,7 @@ import { CommonModule, CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { ToastService } from '../../services/toast'; // <-- IMPORTA NUESTRO SERVICIO
+import { ToastService } from '../../services/toast';
 
 export interface QuoteItem {
   id: number;
@@ -28,10 +28,9 @@ export class QuoteCreator {
   ];
   private nextId = 2;
 
-  // Inyectar el servicio de notificaciones
   toastService = inject(ToastService);
 
-  // ... (addItem, removeItem y los getters se mantienen igual)
+  // ... (El resto de tus métodos como addItem, removeItem, getters, etc., se mantienen igual)
   addItem(): void { this.items.push({ id: this.nextId++, descripcion: '', cantidad: 1, precioUnitario: 0 }); }
   removeItem(id: number): void { this.items = this.items.filter(item => item.id !== id); }
   get subtotal(): number { return this.items.reduce((acc, item) => acc + (item.cantidad * item.precioUnitario), 0); }
@@ -43,12 +42,12 @@ export class QuoteCreator {
     return formatter.format(value || 0).replace('PEN', 'S/ ');
   }
 
-  // MÉTODO generarPDF() ACTUALIZADO
+  // MÉTODO generarPDF() COMPLETAMENTE ACTUALIZADO
   async generarPDF(): Promise<void> {
     const doc = new jsPDF();
-    // ... (toda la lógica para dibujar el PDF se mantiene igual)
     const head = [['#', 'Descripción', 'Cant.', 'P. Unit.', 'Total']];
     const body = this.items.map((item, index) => [ index + 1, item.descripcion, item.cantidad, this.formatCurrency(item.precioUnitario), this.formatCurrency(item.cantidad * item.precioUnitario) ]);
+
     autoTable(doc, {
       head: head, body: body, startY: 55, theme: 'grid',
       headStyles: { fillColor: [233, 236, 239], textColor: [33, 37, 41] },
@@ -62,6 +61,7 @@ export class QuoteCreator {
         doc.setFont('helvetica', 'normal'); doc.text(this.fecha, 160, 45);
       },
     });
+
     const finalY = (doc as any).lastAutoTable.finalY;
     const summaryX = 130;
     doc.setFontSize(11); doc.setFont('helvetica', 'normal');
@@ -70,9 +70,36 @@ export class QuoteCreator {
     doc.setFontSize(14); doc.setFont('helvetica', 'bold');
     doc.text("TOTAL:", summaryX, finalY + 25); doc.text(this.formatCurrency(this.total), 195, finalY + 25, { align: 'right' });
 
-    // LÓGICA PARA COMPARTIR Y NOTIFICAR CON BOOTSTRAP
+    // --- NUEVA LÓGICA PARA NOMBRES ÚNICOS Y COMPARTIR/ABRIR ---
+
+    // 1. Crear nombre de archivo único con fecha y hora
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+    const fileName = `Cotizacion_${this.cliente.replace(/ /g, '_')}_${timestamp}.pdf`;
+
+    // 2. Generar el PDF como un objeto Blob
     const pdfBlob = doc.output('blob');
-    doc.save(`Cotizacion-${this.numeroCotizacion}.pdf`);
-    this.toastService.show('PDF generado con éxito!', { classname: 'bg-success text-light', delay: 5000 });
+
+    // 3. Lógica para compartir en móviles
+    if (navigator.share) {
+      const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+      try {
+        await navigator.share({
+          title: `Cotización ${this.numeroCotizacion}`,
+          text: `Adjunto la cotización para ${this.cliente}.`,
+          files: [pdfFile],
+        });
+        this.toastService.show('¡Cotización compartida!', { classname: 'bg-success text-light', delay: 5000 });
+      } catch (error) {
+        // Si el usuario cancela el diálogo de compartir, se descarga normalmente
+        doc.save(fileName);
+        this.toastService.show('PDF descargado.', { classname: 'bg-info text-light', delay: 3000 });
+      }
+    } else {
+      // 4. Lógica para abrir en una nueva pestaña en escritorio
+      const url = URL.createObjectURL(pdfBlob);
+      window.open(url);
+      this.toastService.show('PDF generado. Revisa la nueva pestaña.', { classname: 'bg-success text-light', delay: 5000 });
+    }
   }
 }
