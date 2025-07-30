@@ -22,7 +22,7 @@ export interface QuoteItem {
   templateUrl: './quote-creator.html',
   styleUrls: ['./quote-creator.scss']
 })
-export class QuoteCreator { // <--- Nombre corregido
+export class QuoteCreator {
   numeroCotizacion: string = 'COT-2025-001';
   cliente: string = '';
   fecha: string = new Date().toLocaleDateString('es-PE');
