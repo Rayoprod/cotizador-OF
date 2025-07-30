@@ -3,7 +3,7 @@
     <div class="card-header bg-light p-4">
       <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
         <div class="mb-3 mb-md-0">
-          <img src="../../../assets/logowym.png" alt="Logo" class="logo-image">
+          <img src="assets/logo.png" alt="Logo" class="logo-image">
         </div>
         <div class="text-md-end">
           <h1 class="h2 mb-0">COTIZACIÓN</h1>
@@ -30,9 +30,10 @@
             <tr>
               <th scope="col" style="width: 5%;">#</th>
               <th scope="col">Descripción</th>
+              <th scope="col" style="width: 10%;">Unidad</th>
               <th scope="col" class="text-end" style="width: 15%;">Cantidad</th>
-              <th scope="col" class="text-end" style="width: 20%;">P. Unitario</th>
-              <th scope="col" class="text-end" style="width: 20%;">Total</th>
+              <th scope="col" class="text-end" style="width: 15%;">P. Unitario</th>
+              <th scope="col" class="text-end" style="width: 15%;">Total</th>
               <th scope="col" style="width: 5%;"></th>
             </tr>
           </thead>
@@ -48,9 +49,10 @@
                   placeholder="Escribe para buscar..."
                 >
               </td>
-              <td data-label="Cantidad"><input type="number" class="form-control text-end" [(ngModel)]="item.cantidad" placeholder="1"></td>
+              <td data-label="Unidad"><input type="text" class="form-control" [(ngModel)]="item.unidad"></td>
+              <td data-label="Cantidad"><input type="number" class="form-control text-end" [(ngModel)]="item.cantidad" placeholder="Cantidad"></td>
               <td data-label="P. Unitario"><input type="number" class="form-control text-end" [(ngModel)]="item.precioUnitario" placeholder="0.00"></td>
-              <td data-label="Total" class="text-end fw-bold">{{ (item.cantidad * (item.precioUnitario || 0)) | currency:'S/ ' }}</td>
+              <td data-label="Total" class="text-end fw-bold">{{ ( (item.cantidad || 0) * (item.precioUnitario || 0)) | currency:'S/ ' }}</td>
               <td class="text-center">
                 <button class="btn btn-outline-danger btn-sm" (click)="removeItem(item.id)">
                   &times;

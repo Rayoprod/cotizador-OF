@@ -1,18 +1,20 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { NgbTypeaheadModule } from '@ng-bootstrap/ng-bootstrap'; // <-- MÓDULO AÑADIDO
+import { NgbTypeaheadModule } from '@ng-bootstrap/ng-bootstrap';
 import { Observable, OperatorFunction } from 'rxjs';
 import { debounceTime, distinctUntilChanged, map } from 'rxjs/operators';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { ToastService } from '../../services/toast';
 
+// INTERFAZ ACTUALIZADA
 export interface QuoteItem {
   id: number;
   descripcion: string;
-  cantidad: number;
-  precioUnitario: number | null; // <-- CAMBIO: AHORA ACEPTA NULL
+  unidad: string;
+  cantidad: number | null; // <-- ACEPTA NULL
+  precioUnitario: number | null;
 }
 
 @Component({
@@ -22,7 +24,7 @@ export interface QuoteItem {
     CommonModule,
     FormsModule,
     CurrencyPipe,
-    NgbTypeaheadModule // <-- MÓDULO AÑADIDO
+    NgbTypeaheadModule
   ],
   templateUrl: './quote-creator.html',
   styleUrls: ['./quote-creator.scss']
@@ -30,19 +32,20 @@ export interface QuoteItem {
 export class QuoteCreator {
   numeroCotizacion: string = '';
   cliente: string = '';
-  fecha: string = '';
+  // FECHA AUTOMÁTICA
+  fecha: string = new Date().toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
   items: QuoteItem[] = [];
   private nextId = 1;
   toastService = inject(ToastService);
 
-  // LISTA DE PRODUCTOS PARA AUTOCOMPLETADO
+  // LISTA DE MATERIALES ACTUALIZADA
   productosSugeridos: string[] = [
     'Piedra chancada 1/2"',
     'Piedra chancada 3/4"',
     'Piedra chancada 1"',
     'Arena gruesa (por m³)',
     'Arena fina (por m³)',
-    'Hormigón"',
+    'Hormigón',
   ];
 
   constructor() {
@@ -53,8 +56,9 @@ export class QuoteCreator {
     this.items.push({
       id: this.nextId++,
       descripcion: '',
-      cantidad: 1,
-      precioUnitario: null // <-- CAMBIO: EMPIEZA VACÍO
+      unidad: 'm³',
+      cantidad: null, // <-- EMPIEZA VACÍO
+      precioUnitario: null
     });
   }
 
@@ -63,7 +67,7 @@ export class QuoteCreator {
   }
 
   get subtotal(): number {
-    return this.items.reduce((acc, item) => acc + (item.cantidad * (item.precioUnitario || 0)), 0);
+    return this.items.reduce((acc, item) => acc + ((item.cantidad || 0) * (item.precioUnitario || 0)), 0);
   }
 
   get igv(): number {
@@ -74,7 +78,6 @@ export class QuoteCreator {
     return this.subtotal + this.igv;
   }
 
-  // LÓGICA PARA EL AUTOCOMPLETADO
   search: OperatorFunction<string, readonly string[]> = (text$: Observable<string>) =>
     text$.pipe(
       debounceTime(200),
@@ -91,13 +94,14 @@ export class QuoteCreator {
 
   generarPDF(): void {
     const doc = new jsPDF();
-    const head = [['#', 'Descripción', 'Cant.', 'P. Unit.', 'Total']];
+    const head = [['#', 'Descripción', 'Unidad', 'Cant.', 'P. Unit.', 'Total']];
     const body = this.items.map((item, index) => [
       index + 1,
       item.descripcion,
+      item.unidad,
       item.cantidad,
       this.formatCurrency(item.precioUnitario),
-      this.formatCurrency(item.cantidad * (item.precioUnitario || 0))
+      this.formatCurrency((item.cantidad || 0) * (item.precioUnitario || 0))
     ]);
 
     autoTable(doc, {
@@ -116,7 +120,6 @@ export class QuoteCreator {
 
     const finalY = (doc as any).lastAutoTable.finalY;
     const summaryX = 130;
-    // ... (resto del código del PDF se mantiene igual)
     doc.setFontSize(11); doc.setFont('helvetica', 'normal');
     doc.text("Subtotal:", summaryX, finalY + 10); doc.text(this.formatCurrency(this.subtotal), 195, finalY + 10, { align: 'right' });
     doc.text("IGV (18%):", summaryX, finalY + 17); doc.text(this.formatCurrency(this.igv), 195, finalY + 17, { align: 'right' });
