@@ -20,29 +20,50 @@ export interface QuoteItem {
   styleUrls: ['./quote-creator.scss']
 })
 export class QuoteCreator {
-  numeroCotizacion: string = 'COT-2025-001';
+  numeroCotizacion: string = '';
   cliente: string = '';
-  fecha: string = new Date().toLocaleDateString('es-PE');
-  items: QuoteItem[] = [
-    { id: 1, descripcion: 'Análisis y diagnóstico de sistema', cantidad: 1, precioUnitario: 50.00 }
-  ];
-  private nextId = 2;
+  fecha: string = '';
+  items: QuoteItem[] = [];
 
+  private nextId = 1;
   toastService = inject(ToastService);
 
-  addItem(): void { this.items.push({ id: this.nextId++, descripcion: '', cantidad: 1, precioUnitario: 0 }); }
-  removeItem(id: number): void { this.items = this.items.filter(item => item.id !== id); }
-  get subtotal(): number { return this.items.reduce((acc, item) => acc + (item.cantidad * item.precioUnitario), 0); }
-  get igv(): number { return this.subtotal * 0.18; }
-  get total(): number { return this.subtotal + this.igv; }
+  constructor() {
+    this.addItem();
+  }
+
+  addItem(): void {
+    this.items.push({
+      id: this.nextId++,
+      descripcion: '',
+      cantidad: 1,
+      precioUnitario: 0
+    });
+  }
+
+  removeItem(id: number): void {
+    this.items = this.items.filter(item => item.id !== id);
+  }
+
+  get subtotal(): number {
+    return this.items.reduce((acc, item) => acc + (item.cantidad * item.precioUnitario), 0);
+  }
+
+  get igv(): number {
+    return this.subtotal * 0.18;
+  }
+
+  get total(): number {
+    return this.subtotal + this.igv;
+  }
 
   private formatCurrency(value: number): string {
     const formatter = new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' });
     return formatter.format(value || 0).replace('PEN', 'S/ ');
   }
 
-  // MÉTODO generarPDF() con la nueva lógica de ABRIR
-  generarPDF(): void {
+  // MÉTODO generarPDF() CON LÓGICA DE COMPARTIR PARA MÓVILES
+  async generarPDF(): Promise<void> {
     const doc = new jsPDF();
     const head = [['#', 'Descripción', 'Cant.', 'P. Unit.', 'Total']];
     const body = this.items.map((item, index) => [ index + 1, item.descripcion, item.cantidad, this.formatCurrency(item.precioUnitario), this.formatCurrency(item.cantidad * item.precioUnitario) ]);
@@ -69,18 +90,32 @@ export class QuoteCreator {
     doc.setFontSize(14); doc.setFont('helvetica', 'bold');
     doc.text("TOTAL:", summaryX, finalY + 25); doc.text(this.formatCurrency(this.total), 195, finalY + 25, { align: 'right' });
 
-    // --- NUEVA LÓGICA UNIFICADA PARA ABRIR EL PDF ---
+    // --- LÓGICA MEJORADA PARA COMPARTIR/ABRIR ---
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+    const fileName = `Cotizacion_${this.cliente.replace(/ /g, '_') || 'cliente'}_${timestamp}.pdf`;
 
-    // 1. Generar el PDF como un objeto Blob
     const pdfBlob = doc.output('blob');
+    const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
-    // 2. Crear una URL temporal para el Blob
-    const url = URL.createObjectURL(pdfBlob);
-
-    // 3. Abrir la URL en una nueva pestaña (funciona en móvil y escritorio)
-    window.open(url);
-
-    // 4. Mostrar la notificación
-    this.toastService.show('PDF generado. Revisa la nueva pestaña.', { classname: 'bg-success text-light', delay: 5000 });
+    // Si el navegador soporta la API de Compartir (móviles)
+    if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
+      try {
+        await navigator.share({
+          title: `Cotización ${this.numeroCotizacion}`,
+          text: `Adjunto la cotización para ${this.cliente}.`,
+          files: [pdfFile],
+        });
+        this.toastService.show('¡Cotización compartida!', { classname: 'bg-success text-light', delay: 3000 });
+      } catch (error) {
+        // El usuario canceló el diálogo de compartir
+        this.toastService.show('La acción de compartir fue cancelada.', { classname: 'bg-info text-light', delay: 3000 });
+      }
+    } else {
+      // Si no (escritorio), abre en una nueva pestaña
+      const url = URL.createObjectURL(pdfBlob);
+      window.open(url);
+      this.toastService.show('PDF generado. Revisa la nueva pestaña.', { classname: 'bg-success text-light', delay: 5000 });
+    }
   }
 }
