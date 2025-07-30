@@ -1,9 +1,13 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer } from '@angular/platform-browser'; // Importar DomSanitizer
+import { NgbModal, NgbModule } from '@ng-bootstrap/ng-bootstrap'; // Importar NgbModal
+
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { ToastService } from '../../services/toast';
+import { PdfPreviewComponent } from '../pdf-preview/pdf-preview'; // Importar nuestro nuevo componente
 
 export interface QuoteItem {
   id: number;
@@ -15,55 +19,34 @@ export interface QuoteItem {
 @Component({
   selector: 'app-quote-creator',
   standalone: true,
-  imports: [ CommonModule, FormsModule, CurrencyPipe ],
+  imports: [ CommonModule, FormsModule, CurrencyPipe, NgbModule ], // Añadir NgbModule
   templateUrl: './quote-creator.html',
   styleUrls: ['./quote-creator.scss']
 })
 export class QuoteCreator {
+  // ... (todas las propiedades como numeroCotizacion, cliente, etc. se mantienen igual)
   numeroCotizacion: string = '';
   cliente: string = '';
   fecha: string = '';
   items: QuoteItem[] = [];
-
   private nextId = 1;
   toastService = inject(ToastService);
+  private modalService = inject(NgbModal); // Inyectar el servicio de modales
+  private sanitizer = inject(DomSanitizer); // Inyectar el DomSanitizer
 
-  constructor() {
-    this.addItem();
-  }
-
-  addItem(): void {
-    this.items.push({
-      id: this.nextId++,
-      descripcion: '',
-      cantidad: 1,
-      precioUnitario: 0
-    });
-  }
-
-  removeItem(id: number): void {
-    this.items = this.items.filter(item => item.id !== id);
-  }
-
-  get subtotal(): number {
-    return this.items.reduce((acc, item) => acc + (item.cantidad * item.precioUnitario), 0);
-  }
-
-  get igv(): number {
-    return this.subtotal * 0.18;
-  }
-
-  get total(): number {
-    return this.subtotal + this.igv;
-  }
-
+  constructor() { this.addItem(); }
+  addItem(): void { this.items.push({ id: this.nextId++, descripcion: '', cantidad: 1, precioUnitario: 0 }); }
+  removeItem(id: number): void { this.items = this.items.filter(item => item.id !== id); }
+  get subtotal(): number { return this.items.reduce((acc, item) => acc + (item.cantidad * item.precioUnitario), 0); }
+  get igv(): number { return this.subtotal * 0.18; }
+  get total(): number { return this.subtotal + this.igv; }
   private formatCurrency(value: number): string {
     const formatter = new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' });
     return formatter.format(value || 0).replace('PEN', 'S/ ');
   }
 
-  // MÉTODO generarPDF() CON LÓGICA DE COMPARTIR PARA MÓVILES
-  async generarPDF(): Promise<void> {
+  // MÉTODO generarPDF() ACTUALIZADO PARA ABRIR EL MODAL
+  generarPDF(): void {
     const doc = new jsPDF();
     const head = [['#', 'Descripción', 'Cant.', 'P. Unit.', 'Total']];
     const body = this.items.map((item, index) => [ index + 1, item.descripcion, item.cantidad, this.formatCurrency(item.precioUnitario), this.formatCurrency(item.cantidad * item.precioUnitario) ]);
@@ -90,32 +73,22 @@ export class QuoteCreator {
     doc.setFontSize(14); doc.setFont('helvetica', 'bold');
     doc.text("TOTAL:", summaryX, finalY + 25); doc.text(this.formatCurrency(this.total), 195, finalY + 25, { align: 'right' });
 
-    // --- LÓGICA MEJORADA PARA COMPARTIR/ABRIR ---
+    // Generar nombre de archivo y el PDF como Blob
     const now = new Date();
     const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
     const fileName = `Cotizacion_${this.cliente.replace(/ /g, '_') || 'cliente'}_${timestamp}.pdf`;
-
     const pdfBlob = doc.output('blob');
-    const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
-    // Si el navegador soporta la API de Compartir (móviles)
-    if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
-      try {
-        await navigator.share({
-          title: `Cotización ${this.numeroCotizacion}`,
-          text: `Adjunto la cotización para ${this.cliente}.`,
-          files: [pdfFile],
-        });
-        this.toastService.show('¡Cotización compartida!', { classname: 'bg-success text-light', delay: 3000 });
-      } catch (error) {
-        // El usuario canceló el diálogo de compartir
-        this.toastService.show('La acción de compartir fue cancelada.', { classname: 'bg-info text-light', delay: 3000 });
-      }
-    } else {
-      // Si no (escritorio), abre en una nueva pestaña
-      const url = URL.createObjectURL(pdfBlob);
-      window.open(url);
-      this.toastService.show('PDF generado. Revisa la nueva pestaña.', { classname: 'bg-success text-light', delay: 5000 });
-    }
+    // Crear la URL segura para el iframe
+    const url = URL.createObjectURL(pdfBlob);
+    const safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
+
+    // Abrir el modal
+    const modalRef = this.modalService.open(PdfPreviewComponent, { size: 'lg', centered: true });
+    modalRef.componentInstance.pdfUrl = safeUrl;
+    modalRef.componentInstance.pdfBlob = pdfBlob;
+    modalRef.componentInstance.fileName = fileName;
+
+    this.toastService.show('PDF generado. Revisa la vista previa.', { classname: 'bg-success text-light', delay: 3000 });
   }
 }
