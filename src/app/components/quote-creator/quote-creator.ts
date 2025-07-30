@@ -2,7 +2,7 @@ import { Component, inject } from '@angular/core';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
-import { NgbModal, NgbModule } from '@ng-bootstrap/ng-bootstrap'; // <-- Módulo clave
+import { NgbModal, NgbModule } from '@ng-bootstrap/ng-bootstrap';
 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -19,16 +19,16 @@ export interface QuoteItem {
 @Component({
   selector: 'app-quote-creator',
   standalone: true,
-  imports: [ CommonModule, FormsModule, CurrencyPipe, NgbModule ], // <-- Módulo añadido aquí
+  imports: [ CommonModule, FormsModule, CurrencyPipe, NgbModule ],
   templateUrl: './quote-creator.html',
   styleUrls: ['./quote-creator.scss']
 })
 export class QuoteCreator {
-  // ... (tus propiedades se mantienen igual)
   numeroCotizacion: string = '';
   cliente: string = '';
   fecha: string = '';
   items: QuoteItem[] = [];
+
   private nextId = 1;
   toastService = inject(ToastService);
   private modalService = inject(NgbModal);
@@ -45,27 +45,44 @@ export class QuoteCreator {
     return formatter.format(value || 0).replace('PEN', 'S/ ');
   }
 
-  // MÉTODO PARA GENERAR Y ABRIR LA VISTA PREVIA
-  generarPDF(): void {
+  // MÉTODO generarPDF() ACTUALIZADO CON LÓGICA DIFERENTE PARA MÓVIL Y ESCRITORIO
+  async generarPDF(): Promise<void> {
     const doc = this._crearDocumentoPDF();
-    const pdfBlob = doc.output('blob');
 
-    // Crear nombre de archivo único
+    // Generar nombre de archivo único
     const now = new Date();
     const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
     const fileName = `Cotizacion_${this.cliente.replace(/ /g, '_') || 'cliente'}_${timestamp}.pdf`;
 
-    // Crear URL segura para el iframe
-    const url = URL.createObjectURL(pdfBlob);
-    const safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
+    // Generar el PDF como un objeto Blob
+    const pdfBlob = doc.output('blob');
 
-    // Abrir el modal con el componente de vista previa
-    const modalRef = this.modalService.open(PdfPreviewComponent, { size: 'lg', centered: true });
-    modalRef.componentInstance.pdfUrl = safeUrl;
-    modalRef.componentInstance.pdfBlob = pdfBlob;
-    modalRef.componentInstance.fileName = fileName;
+    // --- LÓGICA INTELIGENTE ---
+    // Si el navegador es móvil y soporta la API de Compartir, la usamos.
+    if (navigator.share) {
+      const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+      try {
+        await navigator.share({
+          title: `Cotización ${this.numeroCotizacion}`,
+          text: `Adjunto la cotización para ${this.cliente}.`,
+          files: [pdfFile],
+        });
+        this.toastService.show('¡Cotización compartida!', { classname: 'bg-success text-light', delay: 3000 });
+      } catch (error) {
+        this.toastService.show('La acción de compartir fue cancelada.', { classname: 'bg-info text-light', delay: 3000 });
+      }
+    } else {
+      // Si es un navegador de escritorio, abrimos el modal de vista previa.
+      const url = URL.createObjectURL(pdfBlob);
+      const safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
 
-    this.toastService.show('Vista previa generada.', { classname: 'bg-info text-light', delay: 3000 });
+      const modalRef = this.modalService.open(PdfPreviewComponent, { size: 'lg', centered: true });
+      modalRef.componentInstance.pdfUrl = safeUrl;
+      modalRef.componentInstance.pdfBlob = pdfBlob;
+      modalRef.componentInstance.fileName = fileName;
+
+      this.toastService.show('Vista previa generada.', { classname: 'bg-info text-light', delay: 3000 });
+    }
   }
 
   // Función privada para no repetir el código de creación del PDF
