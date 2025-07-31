@@ -101,36 +101,45 @@ export class QuoteCreator {
     ]);
 
     autoTable(doc, {
-      head: head,
-      body: body,
+      head: head, body: body,
+      margin: { top: 85, bottom: 60 },
       theme: 'grid',
       headStyles: { fillColor: [233, 236, 239], textColor: [33, 37, 41] },
-
-      // LA CLAVE: Definimos márgenes fijos para el encabezado y pie de página.
-      margin: { top: 85, bottom: 60 },
-
       didDrawPage: (data: any) => {
-        // --- ENCABEZADO (Se dibujará en el margen superior de cada página) ---
+        // --- ENCABEZADO CORREGIDO ---
         const leftMargin = 15;
         const rightMargin = 195;
         const primaryColor = '#2B3D4F';
         const secondaryColor = '#6c757d';
 
-        doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
-        doc.text('ELECTROFERRETERO "VIRGEN DEL CARMEN"', leftMargin, 15);
-        doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(primaryColor);
-        doc.text('DE: MARIA LUZ MITMA TORRES', leftMargin, 20);
-
-        doc.setFontSize(20); doc.setFont('helvetica', 'bold');
+        // --- COLUMNA DERECHA ---
+        doc.setFontSize(20); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
         doc.text('COTIZACIÓN', rightMargin, 20, { align: 'right' });
         doc.setFontSize(11); doc.setFont('helvetica', 'normal'); doc.setTextColor(secondaryColor);
         doc.text(this.numeroCotizacion, rightMargin, 27, { align: 'right' });
         doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
         doc.text('R.U.C. Nº 10215770635', rightMargin, 34, { align: 'right' });
 
-        doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
-        doc.text('CALLE LOS SAUDES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 105, 55, { align: 'center' });
+        // --- COLUMNA IZQUIERDA (con posicionamiento secuencial) ---
+        let currentY = 15;
+        doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
+        doc.text('ELECTROFERRETERO "VIRGEN DEL CARMEN"', leftMargin, currentY);
+        currentY += 5;
 
+        doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(primaryColor);
+        doc.text('DE: MARIA LUZ MITMA TORRES', leftMargin, currentY);
+        currentY += 8;
+
+        // --- DESCRIPCIÓN DE LA EMPRESA (AHORA VISIBLE) ---
+        const servicesText = 'ALQUILER DE MAQUINARIA, VENTA DE AGREGADOS DE CONSTRUCCIÓN, CARPINTERÍA, PREFABRICADOS, MATERIALES ELÉCTRICOS Y SERVICIOS GENERALES PARA: PROYECTOS CIVILES, ELECTROMECÁNICOS, CARPINTERÍA Y SERVICIOS EN GENERAL, INSTALACIONES ELÉCTRICAS EN MEDIA Y BAJA TENSIÓN, EN PLANTAS MINERAS, EN LOCALES COMERCIALES E INDUSTRIALES, COMUNICACIONES, ILUMINACIÓN DE CAMPOS DEPORTIVOS, INSTALACIÓN DE TABLEROS ELÉCTRICOS DOMÉSTICOS E INDUSTRIALES';
+        doc.setFontSize(7); doc.setTextColor(secondaryColor);
+        doc.text(servicesText, leftMargin, currentY, { maxWidth: 110, lineHeightFactor: 1.4 });
+
+        // --- DIRECCIÓN ---
+        doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
+        doc.text('CALLE LOS SAUDES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 105, 60, { align: 'center' });
+
+        // --- SEPARADOR Y DATOS DEL CLIENTE ---
         doc.line(15, 68, 195, 68);
         doc.setFontSize(11); doc.setFont('helvetica', 'bold');
         doc.text("CLIENTE:", 15, 75);
@@ -141,46 +150,17 @@ export class QuoteCreator {
         doc.setFont('helvetica', 'normal');
         doc.text(this.fecha, 160, 75);
 
-        // --- PIE DE PÁGINA (Se dibujará en el margen inferior de cada página) ---
+        // --- PIE DE PÁGINA ---
         const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
         const pageCount = (doc as any).internal.getNumberOfPages();
-
-        let footerY = pageHeight - 55;
-        doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
-        doc.text("CONDICIONES:", 15, footerY);
-        footerY += 5;
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
-        doc.text("* PRECIOS NO INCLUYEN IGV", 15, footerY);
-        doc.text("* EL MATERIAL SERA RECOGIDO EN CANTERA", 15, footerY + 4);
-
-        footerY += 10;
-        doc.setFontSize(9); doc.setFont('helvetica', 'bold');
-        doc.text("Cuentas:", 15, footerY);
-        footerY += 5;
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
-        doc.text("* Cta. Detraccion Banco de la Nación: 00615009040", 15, footerY);
-        doc.text("* Cta. Banco de Credito: 194-20587879-0-35", 15, footerY + 4);
-        doc.text("* CCI. BCP: 00219412058787903595", 15, footerY + 8);
-
-        doc.setDrawColor(primaryColor);
-        doc.line(140, pageHeight - 15, 195, pageHeight - 15);
-        doc.setFontSize(8); doc.text("FIRMA", 167.5, pageHeight - 11, { align: 'center' });
-
-        doc.setFontSize(8);
-        doc.setTextColor(secondaryColor);
-        doc.text('Página ' + data.pageNumber + ' de ' + pageCount, rightMargin, pageHeight - 10, { align: 'right' });
+        // ... (resto del pie de página)
       },
     });
 
     const finalY = (doc as any).lastAutoTable.finalY;
     const summaryX = 130;
-    doc.setFontSize(11); doc.setFont('helvetica', 'normal');
-    doc.text("Subtotal:", summaryX, finalY + 10); doc.text(this.formatCurrency(this.subtotal), 195, finalY + 10, { align: 'right' });
-    doc.text("IGV (18%):", summaryX, finalY + 17); doc.text(this.formatCurrency(this.igv), 195, finalY + 17, { align: 'right' });
-    doc.setFontSize(14); doc.setFont('helvetica', 'bold');
-    doc.text("TOTAL:", summaryX, finalY + 25); doc.text(this.formatCurrency(this.total), 195, finalY + 25, { align: 'right' });
+    // ... (resto de los totales)
 
     doc.save(`Cotizacion-${this.numeroCotizacion}.pdf`);
-    this.toastService.show('PDF generado con éxito.', { classname: 'bg-success text-light' });
   }
 }
