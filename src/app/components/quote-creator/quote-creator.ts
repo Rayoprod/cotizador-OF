@@ -46,7 +46,19 @@ export class QuoteCreator {
   ];
 
   constructor() {
+    this.numeroCotizacion = this._generarNumeroCotizacion();
     this.addItem();
+  }
+
+  private _generarNumeroCotizacion(): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    return `COT-${year}${month}${day}-${hours}${minutes}${seconds}`;
   }
 
   addItem(): void {
@@ -92,6 +104,16 @@ export class QuoteCreator {
   }
 
   generarPDF(): void {
+    if (!this.cliente.trim()) {
+      this.toastService.show('Error: Por favor, ingresa el nombre del cliente.', { classname: 'bg-danger text-light', delay: 5000 });
+      return;
+    }
+    const itemInvalido = this.items.find(item => !item.descripcion.trim() || (item.cantidad || 0) <= 0 || item.precioUnitario === null);
+    if (itemInvalido) {
+      this.toastService.show('Error: Revisa los items. Todos deben tener descripción, cantidad y precio.', { classname: 'bg-danger text-light', delay: 5000 });
+      return;
+    }
+
     const doc = new jsPDF();
     const head = [['#', 'Descripción', 'Unidad', 'Cant.', 'P. Unit.', 'Total']];
     const body = this.items.map((item, index) => [
@@ -106,40 +128,23 @@ export class QuoteCreator {
       theme: 'grid',
       headStyles: { fillColor: [233, 236, 239], textColor: [33, 37, 41] },
       didDrawPage: (data: any) => {
-        // --- ENCABEZADO CORREGIDO ---
+        // --- ENCABEZADO ---
         const leftMargin = 15;
         const rightMargin = 195;
-        const primaryColor = '#2B3D4F';
+        const primaryColor = '#212529';
         const secondaryColor = '#6c757d';
-
-        // --- COLUMNA DERECHA ---
-        doc.setFontSize(20); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
+        doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
+        doc.text('ELECTROFERRETERO "VIRGEN DEL CARMEN"', leftMargin, 15);
+        doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(primaryColor);
+        doc.text('DE: MARIA LUZ MITMA TORRES', leftMargin, 20);
+        doc.setFontSize(20); doc.setFont('helvetica', 'bold');
         doc.text('COTIZACIÓN', rightMargin, 20, { align: 'right' });
         doc.setFontSize(11); doc.setFont('helvetica', 'normal'); doc.setTextColor(secondaryColor);
         doc.text(this.numeroCotizacion, rightMargin, 27, { align: 'right' });
         doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
         doc.text('R.U.C. Nº 10215770635', rightMargin, 34, { align: 'right' });
-
-        // --- COLUMNA IZQUIERDA (con posicionamiento secuencial) ---
-        let currentY = 15;
-        doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
-        doc.text('ELECTROFERRETERO "VIRGEN DEL CARMEN"', leftMargin, currentY);
-        currentY += 5;
-
-        doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(primaryColor);
-        doc.text('DE: MARIA LUZ MITMA TORRES', leftMargin, currentY);
-        currentY += 8;
-
-        // --- DESCRIPCIÓN DE LA EMPRESA (AHORA VISIBLE) ---
-        const servicesText = 'ALQUILER DE MAQUINARIA, VENTA DE AGREGADOS DE CONSTRUCCIÓN, CARPINTERÍA, PREFABRICADOS, MATERIALES ELÉCTRICOS Y SERVICIOS GENERALES PARA: PROYECTOS CIVILES, ELECTROMECÁNICOS, CARPINTERÍA Y SERVICIOS EN GENERAL, INSTALACIONES ELÉCTRICAS EN MEDIA Y BAJA TENSIÓN, EN PLANTAS MINERAS, EN LOCALES COMERCIALES E INDUSTRIALES, COMUNICACIONES, ILUMINACIÓN DE CAMPOS DEPORTIVOS, INSTALACIÓN DE TABLEROS ELÉCTRICOS DOMÉSTICOS E INDUSTRIALES';
-        doc.setFontSize(7); doc.setTextColor(secondaryColor);
-        doc.text(servicesText, leftMargin, currentY, { maxWidth: 110, lineHeightFactor: 1.4 });
-
-        // --- DIRECCIÓN ---
         doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
-        doc.text('CALLE LOS SAUDES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 105, 60, { align: 'center' });
-
-        // --- SEPARADOR Y DATOS DEL CLIENTE ---
+        doc.text('CALLE LOS SAUDES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 105, 55, { align: 'center' });
         doc.line(15, 68, 195, 68);
         doc.setFontSize(11); doc.setFont('helvetica', 'bold');
         doc.text("CLIENTE:", 15, 75);
@@ -153,14 +158,38 @@ export class QuoteCreator {
         // --- PIE DE PÁGINA ---
         const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
         const pageCount = (doc as any).internal.getNumberOfPages();
-        // ... (resto del pie de página)
+        let footerY = pageHeight - 55;
+        doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
+        doc.text("CONDICIONES:", 15, footerY);
+        footerY += 5;
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+        doc.text("* PRECIOS NO INCLUYEN IGV", 15, footerY);
+        doc.text("* EL MATERIAL SERA RECOGIDO EN CANTERA", 15, footerY + 4);
+        footerY += 10;
+        doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+        doc.text("Cuentas:", 15, footerY);
+        footerY += 5;
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+        doc.text("* Cta. Detraccion Banco de la Nación: 00615009040", 15, footerY);
+        doc.text("* Cta. Banco de Credito: 194-20587879-0-35", 15, footerY + 4);
+        doc.text("* CCI. BCP: 00219412058787903595", 15, footerY + 8);
+        doc.setDrawColor(primaryColor);
+        doc.line(140, pageHeight - 15, 195, pageHeight - 15);
+        doc.setFontSize(8); doc.text("FIRMA", 167.5, pageHeight - 11, { align: 'center' });
+        doc.setFontSize(8); doc.setTextColor(secondaryColor);
+        doc.text('Página ' + data.pageNumber + ' de ' + pageCount, rightMargin, pageHeight - 10, { align: 'right' });
       },
     });
 
     const finalY = (doc as any).lastAutoTable.finalY;
     const summaryX = 130;
-    // ... (resto de los totales)
+    doc.setFontSize(11); doc.setFont('helvetica', 'normal');
+    doc.text("Subtotal:", summaryX, finalY + 10); doc.text(this.formatCurrency(this.subtotal), 195, finalY + 10, { align: 'right' });
+    doc.text("IGV (18%):", summaryX, finalY + 17); doc.text(this.formatCurrency(this.igv), 195, finalY + 17, { align: 'right' });
+    doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+    doc.text("TOTAL:", summaryX, finalY + 25); doc.text(this.formatCurrency(this.total), 195, finalY + 25, { align: 'right' });
 
     doc.save(`Cotizacion-${this.numeroCotizacion}.pdf`);
+    this.toastService.show('PDF generado con éxito.', { classname: 'bg-success text-light' });
   }
 }

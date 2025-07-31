@@ -21,19 +21,18 @@
 
   .item-row td {
     display: block;
-    text-align: right; // Alinea el contenido (input) a la derecha
+    text-align: right;
     border: none;
     padding: 0.5rem 0;
   }
 
   .item-row td::before {
-    content: attr(data-label); // Muestra la etiqueta
-    float: left; // La etiqueta a la izquierda
+    content: attr(data-label);
+    float: left;
     font-weight: bold;
     margin-right: 1rem;
   }
 
-  // Ocultamos el número de fila y el botón X de esta manera
   .item-row .item-number {
     display: none;
   }
