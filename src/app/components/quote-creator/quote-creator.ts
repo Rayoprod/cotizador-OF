@@ -92,6 +92,24 @@ export class QuoteCreator {
   }
 
   generarPDF(): void {
+    // --- 1. VALIDACIÓN DE CAMPOS (QA) ---
+    if (!this.cliente.trim()) {
+      this.toastService.show('Error: Por favor, ingresa el nombre del cliente.', { classname: 'bg-danger text-light', delay: 5000 });
+      return; // Detiene la ejecución
+    }
+
+    const itemInvalido = this.items.find(item =>
+      !item.descripcion.trim() ||
+      (item.cantidad || 0) <= 0 ||
+      item.precioUnitario === null
+    );
+
+    if (itemInvalido) {
+      this.toastService.show('Error: Revisa los items. Todos deben tener descripción, cantidad y precio.', { classname: 'bg-danger text-light', delay: 5000 });
+      return; // Detiene la ejecución
+    }
+
+    // --- 2. GENERACIÓN DEL PDF (SI LA VALIDACIÓN PASA) ---
     const doc = new jsPDF();
     const head = [['#', 'Descripción', 'Unidad', 'Cant.', 'P. Unit.', 'Total']];
     const body = this.items.map((item, index) => [
@@ -105,57 +123,47 @@ export class QuoteCreator {
       theme: 'grid',
       headStyles: { fillColor: [233, 236, 239], textColor: [33, 37, 41] },
       didDrawPage: (data: any) => {
-        // ==========================================================
-        // ===== ENCABEZADO REVERTIDO AL DISEÑO ORIGINAL DE LA IMAGEN =====
-        // ==========================================================
-        const pageContent = () => {
-          // --- TÍTULO Y RUC ---
-          doc.setFontSize(14);
-          doc.setFont('helvetica', 'bold');
-          doc.setTextColor(0, 0, 139); // Color azul oscuro
-          doc.text('ELECTROFERRETERO "VIRGEN DEL CARMEN"', 105, 15, { align: 'center' });
+        // --- 3. ENCABEZADO ELEGANTE REDISEÑADO ---
+        const leftMargin = 15;
+        const rightMargin = 195;
+        const primaryColor = '#212529'; // Negro
+        const secondaryColor = '#6c757d'; // Gris oscuro
 
-          doc.setFontSize(10);
-          doc.setFont('helvetica', 'normal');
-          doc.setTextColor(0, 0, 0); // Color negro
-          doc.text('DE: MARIA LUZ MITMA TORRES', 105, 20, { align: 'center' });
+        // --- COLUMNA DERECHA ---
+        doc.setFontSize(20); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
+        doc.text('COTIZACIÓN', rightMargin, 20, { align: 'right' });
+        doc.setFontSize(11); doc.setFont('helvetica', 'normal'); doc.setTextColor(secondaryColor);
+        doc.text(this.numeroCotizacion, rightMargin, 27, { align: 'right' });
+        doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
+        doc.text('R.U.C. Nº 10215770635', rightMargin, 34, { align: 'right' });
 
-          doc.setFont('helvetica', 'bold');
-          doc.text('R.U.C.', 195, 15, { align: 'right' });
-          doc.text('Nº 10215770635', 195, 20, { align: 'right' });
+        // --- COLUMNA IZQUIERDA ---
+        let currentY = 15;
+        doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
+        doc.text('ELECTROFERRETERO "VIRGEN DEL CARMEN"', leftMargin, currentY);
+        currentY += 5;
+        doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(primaryColor);
+        doc.text('DE: MARIA LUZ MITMA TORRES', leftMargin, currentY);
+        currentY += 8;
 
-          // --- SERVICIOS (Texto original) ---
-          const servicesText = 'ALQUILER DE MAQUINARIA, VENTA DE AGREGADOS DE CONSTRUCCION, CARPINTERIA, PREFABRICADOS, MATERIALES ELECTRICOS Y SERVICIOS GENERALES PARA: PROYECTOS CIVILES, ELECTROMECANICOS, CARPINTERIA Y SERVICIOS EN GENERAL, INSTALACIONES ELECTRICAS EN MEDIA Y BAJA TENSION, EN PLANTAS MINERAS, EN LOCALES COMERCIALES E INDUSTRIALES, COMUNICACIONES, ILUMINACION DE CAMPOS DEPORTIVOS, INSTALACION DE TABLEROS ELECTRICOS DOMESTICOS E INDUSTRIALES';
-          doc.setFontSize(7.5);
-          doc.setFont('helvetica', 'bold');
-          doc.setTextColor(0, 0, 139); // Color azul oscuro
-          doc.text(servicesText, 105, 30, { align: 'center', maxWidth: 180 });
+        const servicesText = 'ALQUILER DE MAQUINARIA, VENTA DE AGREGADOS DE CONSTRUCCIÓN, CARPINTERÍA, PREFABRICADOS, MATERIALES ELÉCTRICOS Y SERVICIOS GENERALES PARA: PROYECTOS CIVILES, ELECTROMECÁNICOS, CARPINTERÍA Y SERVICIOS EN GENERAL, INSTALACIONES ELÉCTRICAS EN MEDIA Y BAJA TENSIÓN, EN PLANTAS MINERAS, EN LOCALES COMERCIALES E INDUSTRIALES, COMUNICACIONES, ILUMINACIÓN DE CAMPOS DEPORTIVOS, INSTALACIÓN DE TABLEROS ELÉCTRICOS DOMÉSTICOS E INDUSTRIALES';
+        doc.setFontSize(7); doc.setTextColor(secondaryColor);
+        doc.text(servicesText, leftMargin, currentY, { maxWidth: 110, lineHeightFactor: 1.4 });
 
-          // --- DIRECCIÓN ---
-          doc.setFontSize(9);
-          doc.text('CALLE LOS SAUDES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 105, 55, { align: 'center' });
+        // --- DIRECCIÓN ---
+        doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
+        doc.text('CALLE LOS SAUDES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 105, 60, { align: 'center' });
 
-          // --- SEPARADOR Y DATOS DEL CLIENTE ---
-          doc.line(15, 65, 195, 65);
-          doc.setTextColor(0, 0, 0);
-          doc.setFontSize(11);
-          doc.setFont('helvetica', 'bold');
-          doc.text("CLIENTE:", 15, 75);
-          doc.setFont('helvetica', 'normal');
-          doc.text(this.cliente, 40, 75);
-
-          doc.setFont('helvetica', 'bold');
-          doc.text("FECHA:", 140, 75);
-          doc.setFont('helvetica', 'normal');
-          doc.text(this.fecha, 160, 75);
-
-          doc.setFont('helvetica', 'bold');
-          doc.text("COTIZACIÓN:", 140, 80);
-          doc.setFont('helvetica', 'normal');
-          doc.text(this.numeroCotizacion, 170, 80);
-        };
-
-        pageContent();
+        // --- SEPARADOR Y DATOS DEL CLIENTE ---
+        doc.line(15, 68, 195, 68);
+        doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+        doc.text("CLIENTE:", 15, 75);
+        doc.setFont('helvetica', 'normal');
+        doc.text(this.cliente, 40, 75);
+        doc.setFont('helvetica', 'bold');
+        doc.text("FECHA:", 140, 75);
+        doc.setFont('helvetica', 'normal');
+        doc.text(this.fecha, 160, 75);
       },
     });
 
