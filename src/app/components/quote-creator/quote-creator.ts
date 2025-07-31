@@ -53,17 +53,15 @@ export class QuoteCreator {
     this.items.push({
       id: this.nextId++,
       descripcion: '',
-      unidad: '', // <-- NUEVO ITEM EMPIEZA CON UNIDAD VACÍA
+      unidad: '',
       cantidad: null,
       precioUnitario: null
     });
   }
 
-  // NUEVA FUNCIÓN: Se activa al seleccionar un item del autocompletado
   onSelectItem(event: NgbTypeaheadSelectItemEvent, item: QuoteItem): void {
     event.preventDefault();
     item.descripcion = event.item;
-    // Si el item seleccionado está en nuestra lista, autocompletamos la unidad
     if (this.productosSugeridos.includes(event.item)) {
       item.unidad = 'm³';
     }
@@ -93,7 +91,8 @@ export class QuoteCreator {
     return formatter.format(value || 0).replace('PEN', 'S/ ');
   }
 
-  generarPDF(): void {
+  // FUNCIÓN CONVERTIDA A ASÍNCRONA PARA CARGAR LA IMAGEN
+  async generarPDF(): Promise<void> {
     const doc = new jsPDF();
     const head = [['#', 'Descripción', 'Unidad', 'Cant.', 'P. Unit.', 'Total']];
     const body = this.items.map((item, index) => [
@@ -102,71 +101,67 @@ export class QuoteCreator {
       this.formatCurrency((item.cantidad || 0) * (item.precioUnitario || 0))
     ]);
 
+    // --- NUEVO: Cargar la imagen del logo ---
+    const logoBase64 = await this._getBase64ImageFromURL('assets/logo.png');
+
     autoTable(doc, {
       head: head, body: body, startY: 85,
       theme: 'grid',
       headStyles: { fillColor: [233, 236, 239], textColor: [33, 37, 41] },
       didDrawPage: (data: any) => {
-        // ==========================================================
-        // ===== ENCABEZADO RE-DISEÑADO CON FORMATO PROFESIONAL =====
-        // ==========================================================
-        const leftMargin = 15;
-        const rightMargin = 195;
-        const primaryColor = '#2B3D4F'; // Un gris azulado oscuro
-        const secondaryColor = '#6c757d'; // Gris secundario
+        const pageContent = () => {
+          const leftMargin = 15;
+          const rightMargin = 195;
+          const primaryColor = '#2B3D4F';
+          const secondaryColor = '#6c757d';
 
-        // --- COLUMNA DERECHA: Datos de la Cotización ---
-        doc.setFontSize(20);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(primaryColor);
-        doc.text('COTIZACIÓN', rightMargin, 20, { align: 'right' });
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'normal');
-        doc.text(this.numeroCotizacion, rightMargin, 27, { align: 'right' });
-        doc.setFont('helvetica', 'bold');
-        doc.text('R.U.C. Nº 10215770635', rightMargin, 34, { align: 'right' });
+          // --- AÑADIR IMAGEN DEL LOGO AL PDF ---
+          if (logoBase64) {
+            doc.addImage(logoBase64, 'PNG', leftMargin, 15, 40, 30);
+          }
 
-        // --- COLUMNA IZQUIERDA: Datos de la Empresa ---
-        let currentY = 15;
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(primaryColor);
-        doc.text('ELECTROFERRETERO "VIRGEN DEL CARMEN"', leftMargin, currentY);
-        currentY += 5;
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(0, 0, 0);
-        doc.text('DE: MARIA LUZ MITMA TORRES', leftMargin, currentY);
-        currentY += 8;
+          // --- COLUMNA DERECHA: Datos de la Cotización ---
+          doc.setFontSize(20); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
+          doc.text('COTIZACIÓN', rightMargin, 20, { align: 'right' });
+          doc.setFontSize(11); doc.setFont('helvetica', 'normal'); doc.setTextColor(secondaryColor);
+          doc.text(this.numeroCotizacion, rightMargin, 27, { align: 'right' });
+          doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
+          doc.text('R.U.C. Nº 10215770635', rightMargin, 34, { align: 'right' });
 
-        // --- Servicios con formato mejorado ---
-        const servicesText = 'ALQUILER DE MAQUINARIA, VENTA DE AGREGADOS DE CONSTRUCCION, CARPINTERIA, PREFABRICADOS, MATERIALES ELECTRICOS Y SERVICIOS GENERALES PARA: PROYECTOS CIVILES, ELECTROMECANICOS, CARPINTERIA Y SERVICIOS EN GENERAL, INSTALACIONES ELECTRICAS EN MEDIA Y BAJA TENSION, EN PLANTAS MINERAS, EN LOCALES COMERCIALES E INDUSTRIALES, COMUNICACIONES, ILUMINACION DE CAMPOS DEPORTIVOS, INSTALACION DE TABLEROS ELECTRICOS DOMESTICOS E INDUSTRIALES';
-        doc.setFontSize(7);
-        doc.setTextColor(secondaryColor);
-        doc.text(servicesText, leftMargin, currentY, { maxWidth: 110, lineHeightFactor: 1.4 });
+          // --- COLUMNA IZQUIERDA: Datos de la Empresa ---
+          const textStartX = leftMargin + 45;
+          let currentY = 18;
+          doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
+          doc.text('ELECTROFERRETERO "VIRGEN DEL CARMEN"', textStartX, currentY);
+          currentY += 5;
+          doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(secondaryColor);
+          doc.text('DE: MARIA LUZ MITMA TORRES', textStartX, currentY);
+          currentY += 8;
 
-        // --- Dirección (abajo, centrada) ---
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(primaryColor);
-        doc.text('CALLE LOS SAUDES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 105, 60, { align: 'center' });
+          const servicesText = 'ALQUILER DE MAQUINARIA, VENTA DE AGREGADOS, CARPINTERÍA, PREFABRICADOS, MATERIALES ELÉCTRICOS Y SERVICIOS GENERALES.';
+          doc.setFontSize(7);
+          doc.text(servicesText, textStartX, currentY, { maxWidth: 90 });
 
-        // --- SEPARADOR Y DATOS DEL CLIENTE ---
-        doc.line(15, 68, 195, 68);
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'bold');
-        doc.text("CLIENTE:", 15, 75);
-        doc.setFont('helvetica', 'normal');
-        doc.text(this.cliente, 40, 75);
-        doc.setFont('helvetica', 'bold');
-        doc.text("FECHA:", 140, 75);
-        doc.setFont('helvetica', 'normal');
-        doc.text(this.fecha, 160, 75);
+          // --- Dirección y Datos del Cliente ---
+          doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
+          doc.text('CALLE LOS SAUDES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 105, 60, { align: 'center' });
+          doc.line(15, 68, 195, 68);
+          doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+          doc.text("CLIENTE:", 15, 75);
+          doc.setFont('helvetica', 'normal');
+          doc.text(this.cliente, 40, 75);
+          doc.setFont('helvetica', 'bold');
+          doc.text("FECHA:", 140, 75);
+          doc.setFont('helvetica', 'normal');
+          doc.text(this.fecha, 160, 75);
+        };
+        pageContent();
       },
     });
 
     const finalY = (doc as any).lastAutoTable.finalY;
     const summaryX = 130;
+    // ... (el resto del código para dibujar los totales se mantiene igual)
     doc.setFontSize(11); doc.setFont('helvetica', 'normal');
     doc.text("Subtotal:", summaryX, finalY + 10); doc.text(this.formatCurrency(this.subtotal), 195, finalY + 10, { align: 'right' });
     doc.text("IGV (18%):", summaryX, finalY + 17); doc.text(this.formatCurrency(this.igv), 195, finalY + 17, { align: 'right' });
@@ -174,5 +169,30 @@ export class QuoteCreator {
     doc.text("TOTAL:", summaryX, finalY + 25); doc.text(this.formatCurrency(this.total), 195, finalY + 25, { align: 'right' });
 
     doc.save(`Cotizacion-${this.numeroCotizacion}.pdf`);
+  }
+
+  // --- NUEVA FUNCIÓN PRIVADA PARA CONVERTIR IMAGEN A BASE64 ---
+  private _getBase64ImageFromURL(url: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.setAttribute('crossOrigin', 'anonymous');
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          const dataURL = canvas.toDataURL('image/png');
+          resolve(dataURL);
+        } else {
+          reject(new Error('No se pudo obtener el contexto del canvas.'));
+        }
+      };
+      img.onerror = error => {
+        reject(error);
+      };
+      img.src = url;
+    });
   }
 }
