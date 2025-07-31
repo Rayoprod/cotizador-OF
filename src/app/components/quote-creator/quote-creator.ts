@@ -65,111 +65,115 @@ export class QuoteCreator {
   }
 
   async generarPDF(): Promise<void> {
-    const doc = new jsPDF();
-    const head = [['#', 'Descripción', 'Unidad', 'Cant.', 'P. Unit.', 'Total']];
-    const body = this.items.map((item, index) => [
-      index + 1, item.descripcion, item.unidad, item.cantidad,
-      this.formatCurrency(item.precioUnitario),
-      this.formatCurrency((item.cantidad || 0) * (item.precioUnitario || 0))
-    ]);
+    try {
+      const logoBase64 = await this._getBase64ImageFromURL('assets/logo.png');
+      const firmaBase64 = await this._getBase64ImageFromURL('assets/firma.png');
 
-    const logoBase64 = await this._getBase64ImageFromURL('assets/logo.png');
-    const firmaBase64 = await this._getBase64ImageFromURL('assets/firma.png');
+      const doc = new jsPDF();
+      const head = [['#', 'Descripción', 'Unidad', 'Cant.', 'P. Unit.', 'Total']];
+      const body = this.items.map((item, index) => [
+        index + 1, item.descripcion, item.unidad, item.cantidad,
+        this.formatCurrency(item.precioUnitario),
+        this.formatCurrency((item.cantidad || 0) * (item.precioUnitario || 0))
+      ]);
 
-    autoTable(doc, {
-      head: head, body: body,
-      margin: { top: 85, bottom: 50 },
-      theme: 'grid',
-      headStyles: { fillColor: [233, 236, 239], textColor: [33, 37, 41] },
-      didDrawPage: (data: any) => {
-        // ==========================================================
-        // ===== ENCABEZADO (CÓDIGO RESTAURADO Y COMPLETO) ==========
-        // ==========================================================
-        const leftMargin = 15;
-        const rightMargin = 195;
-        const primaryColor = '#2B3D4F';
-        const secondaryColor = '#6c757d';
+      autoTable(doc, {
+        head: head, body: body,
+        margin: { top: 85, bottom: 60 },
+        theme: 'grid',
+        headStyles: { fillColor: [233, 236, 239], textColor: [33, 37, 41] },
+        didDrawPage: (data: any) => {
+          const leftMargin = 15;
+          const rightMargin = 195;
+          const primaryColor = '#2B3D4F';
+          const secondaryColor = '#6c757d';
+          const textStartX = leftMargin + 45;
 
-        if (logoBase64) {
-          doc.addImage(logoBase64, 'PNG', leftMargin, 15, 40, 30);
-        }
+          if (logoBase64) {
+            doc.addImage(logoBase64, 'PNG', leftMargin, 15, 40, 30);
+          } else {
+            // Placeholder si el logo no carga
+            doc.setDrawColor(secondaryColor);
+            doc.rect(leftMargin, 15, 40, 30);
+            doc.setTextColor(secondaryColor);
+            doc.text('Logo', leftMargin + 20, 32, { align: 'center' });
+          }
 
-        doc.setFontSize(20); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
-        doc.text('COTIZACIÓN', rightMargin, 20, { align: 'right' });
-        doc.setFontSize(11); doc.setFont('helvetica', 'normal'); doc.setTextColor(secondaryColor);
-        doc.text(this.numeroCotizacion, rightMargin, 27, { align: 'right' });
-        doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
-        doc.text('R.U.C. Nº 10215770635', rightMargin, 34, { align: 'right' });
+          doc.setFontSize(20); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
+          doc.text('COTIZACIÓN', rightMargin, 20, { align: 'right' });
+          doc.setFontSize(11); doc.setFont('helvetica', 'normal'); doc.setTextColor(secondaryColor);
+          doc.text(this.numeroCotizacion, rightMargin, 27, { align: 'right' });
+          doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
+          doc.text('R.U.C. Nº 10215770635', rightMargin, 34, { align: 'right' });
 
-        const textStartX = leftMargin + 45;
-        let currentY = 18;
-        doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
-        doc.text('ELECTROFERRETERO "VIRGEN DEL CARMEN"', textStartX, currentY);
-        currentY += 5;
-        doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(secondaryColor);
-        doc.text('DE: MARIA LUZ MITMA TORRES', textStartX, currentY);
+          let currentY = 18;
+          doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
+          doc.text('ELECTROFERRETERO "VIRGEN DEL CARMEN"', textStartX, currentY);
+          currentY += 5;
+          doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(secondaryColor);
+          doc.text('DE: MARIA LUZ MITMA TORRES', textStartX, currentY);
 
-        doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
-        doc.text('CALLE LOS SAUDES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 105, 60, { align: 'center' });
+          doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
+          doc.text('CALLE LOS SAUDES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 105, 60, { align: 'center' });
+          doc.line(15, 68, 195, 68);
+          doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+          doc.text("CLIENTE:", 15, 75);
+          doc.setFont('helvetica', 'normal');
+          doc.text(this.cliente, 40, 75);
+          doc.setFont('helvetica', 'bold');
+          doc.text("FECHA:", 140, 75);
+          doc.setFont('helvetica', 'normal');
+          doc.text(this.fecha, 160, 75);
 
-        doc.line(15, 68, 195, 68);
-        doc.setFontSize(11); doc.setFont('helvetica', 'bold');
-        doc.text("CLIENTE:", 15, 75);
-        doc.setFont('helvetica', 'normal');
-        doc.text(this.cliente, 40, 75);
-        doc.setFont('helvetica', 'bold');
-        doc.text("FECHA:", 140, 75);
-        doc.setFont('helvetica', 'normal');
-        doc.text(this.fecha, 160, 75);
+          const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
+          const pageCount = (doc as any).internal.getNumberOfPages();
+          doc.setFontSize(8);
+          doc.setTextColor(secondaryColor);
+          doc.text('Página ' + data.pageNumber + ' de ' + pageCount, rightMargin, pageHeight - 10, { align: 'right' });
 
-        // ==========================================================
-        // ===== PIE DE PÁGINA (CÓDIGO COMPLETO) ====================
-        // ==========================================================
-        const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
-        const pageCount = (doc as any).internal.getNumberOfPages();
+          let footerY = pageHeight - 55;
+          doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
+          doc.text("CONDICIONES:", 15, footerY);
+          footerY += 5;
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+          doc.text("* PRECIOS NO INCLUYEN IGV", 15, footerY);
+          doc.text("* EL MATERIAL SERA RECOGIDO EN CANTERA", 15, footerY + 4);
+          footerY += 10;
+          doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+          doc.text("Cuentas:", 15, footerY);
+          footerY += 5;
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+          doc.text("* Cta. Detraccion Banco de la Nación: 00615009040", 15, footerY);
+          doc.text("* Cta. Banco de Credito: 194-20587879-0-35", 15, footerY + 4);
+          doc.text("* CCI. BCP: 00219412058787903595", 15, footerY + 8);
+          if (firmaBase64) {
+              doc.addImage(firmaBase64, 'PNG', 140, pageHeight - 40, 50, 25);
+          }
+          doc.setDrawColor(primaryColor);
+          doc.line(140, pageHeight - 15, 195, pageHeight - 15);
+          doc.setFontSize(8);
+          doc.text("FIRMA", 167.5, pageHeight - 11, { align: 'center' });
+        },
+      });
 
-        doc.setFontSize(8);
-        doc.setTextColor(secondaryColor);
-        doc.text('Página ' + data.pageNumber + ' de ' + pageCount, rightMargin, pageHeight - 10, { align: 'right' });
+      const finalY = (doc as any).lastAutoTable.finalY;
+      const summaryX = 130;
+      doc.setFontSize(11); doc.setFont('helvetica', 'normal');
+      doc.text("Subtotal:", summaryX, finalY + 10); doc.text(this.formatCurrency(this.subtotal), 195, finalY + 10, { align: 'right' });
+      doc.text("IGV (18%):", summaryX, finalY + 17); doc.text(this.formatCurrency(this.igv), 195, finalY + 17, { align: 'right' });
+      doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+      doc.text("TOTAL:", summaryX, finalY + 25); doc.text(this.formatCurrency(this.total), 195, finalY + 25, { align: 'right' });
 
-        let footerY = pageHeight - 35;
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(primaryColor);
-        doc.text("CUENTAS BANCARIAS:", 15, footerY);
-        footerY += 5;
-
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
-        doc.text("BCP Ahorro Soles: 215-98835496-0-28", 15, footerY);
-        doc.text("CCI: 00221519883549602821", 15, footerY + 4);
-
-        doc.text("YAPE: 959371078", 80, footerY);
-        doc.text("PLIN: 982079142", 80, footerY + 4);
-
-        if (firmaBase64) {
-            doc.addImage(firmaBase64, 'PNG', 140, pageHeight - 40, 50, 25);
-        }
-        doc.setDrawColor(primaryColor);
-        doc.line(140, pageHeight - 15, 195, pageHeight - 15);
-        doc.setFontSize(8);
-        doc.text("FIRMA", 167.5, pageHeight - 11, { align: 'center' });
-      },
-    });
-
-    const finalY = (doc as any).lastAutoTable.finalY;
-    const summaryX = 130;
-    doc.setFontSize(11); doc.setFont('helvetica', 'normal');
-    doc.text("Subtotal:", summaryX, finalY + 10); doc.text(this.formatCurrency(this.subtotal), 195, finalY + 10, { align: 'right' });
-    doc.text("IGV (18%):", summaryX, finalY + 17); doc.text(this.formatCurrency(this.igv), 195, finalY + 17, { align: 'right' });
-    doc.setFontSize(14); doc.setFont('helvetica', 'bold');
-    doc.text("TOTAL:", summaryX, finalY + 25); doc.text(this.formatCurrency(this.total), 195, finalY + 25, { align: 'right' });
-
-    doc.save(`Cotizacion-${this.numeroCotizacion}.pdf`);
+      doc.save(`Cotizacion-${this.numeroCotizacion}.pdf`);
+      this.toastService.show('PDF generado con éxito', { classname: 'bg-success text-light' });
+    } catch (error) {
+      console.error("Error al generar el PDF:", error);
+      this.toastService.show('Error al cargar imágenes. Revisa que los archivos de logo y firma existan en src/assets.', { classname: 'bg-danger text-light', delay: 7000 });
+    }
   }
 
   private _getBase64ImageFromURL(url: string): Promise<string | null> {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
@@ -179,9 +183,13 @@ export class QuoteCreator {
         if (ctx) {
           ctx.drawImage(img, 0, 0);
           resolve(canvas.toDataURL('image/png'));
-        } else { resolve(null); }
+        } else {
+          reject(new Error('No se pudo obtener el contexto del canvas.'));
+        }
       };
-      img.onerror = () => { resolve(null); };
+      img.onerror = (error) => {
+        reject(error);
+      };
       img.src = url;
     });
   }
