@@ -29,7 +29,7 @@ export interface QuoteItem {
   styleUrls: ['./quote-creator.scss']
 })
 export class QuoteCreator {
-  numeroCotizacion: string = 'COT-2025-001';
+  numeroCotizacion: string = '';
   cliente: string = '';
   fecha: string = new Date().toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
   items: QuoteItem[] = [];
@@ -106,41 +106,65 @@ export class QuoteCreator {
       theme: 'grid',
       headStyles: { fillColor: [233, 236, 239], textColor: [33, 37, 41] },
       didDrawPage: (data: any) => {
-        // --- ENCABEZADO COMBINADO Y CORREGIDO ---
+        // ==========================================================
+        // ===== ENCABEZADO RE-DISEÑADO CON MEJOR FORMATO ==========
+        // ==========================================================
         const pageContent = () => {
-          // --- TÍTULO EMPRESA Y TÍTULO COTIZACIÓN ---
+          const leftMargin = 15;
+          const rightMargin = 195;
+          const primaryColor = '#212529'; // Negro suave
+          const secondaryColor = '#6c757d'; // Gris secundario
+
+          // --- COLUMNA DERECHA: Datos de la Cotización ---
+          doc.setFontSize(20);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(primaryColor);
+          doc.text('COTIZACIÓN', rightMargin, 20, { align: 'right' });
+
+          doc.setFontSize(11);
+          doc.setFont('helvetica', 'normal');
+          doc.text(this.numeroCotizacion, rightMargin, 27, { align: 'right' });
+
+          doc.setFont('helvetica', 'bold');
+          doc.text('R.U.C. Nº 10215770635', rightMargin, 34, { align: 'right' });
+
+
+          // --- COLUMNA IZQUIERDA: Datos de la Empresa ---
+          let currentY = 15;
           doc.setFontSize(14);
           doc.setFont('helvetica', 'bold');
-          doc.setTextColor(0, 0, 139); // Color azul oscuro
-          doc.text('ELECTROFERRETERO "VIRGEN DEL CARMEN"', 105, 15, { align: 'center' });
-
-          doc.setFontSize(20);
-          doc.text('COTIZACIÓN', 195, 15, { align: 'right' });
+          doc.setTextColor(primaryColor);
+          doc.text('ELECTROFERRETERO "VIRGEN DEL CARMEN"', leftMargin, currentY);
+          currentY += 5;
 
           doc.setFontSize(10);
           doc.setFont('helvetica', 'normal');
-          doc.setTextColor(0, 0, 0); // Color negro
-          doc.text('DE: MARIA LUZ MITMA TORRES', 105, 20, { align: 'center' });
+          doc.text('DE: MARIA LUZ MITMA TORRES', leftMargin, currentY);
+          currentY += 8;
 
-          doc.setFont('helvetica', 'bold');
-          doc.text(this.numeroCotizacion, 195, 20, { align: 'right' });
-          doc.text('R.U.C. Nº 10215770635', 195, 25, { align: 'right' });
+          // --- Servicios con formato mejorado ---
+          const servicesTitle = 'ALQUILER DE MAQUINARIA, VENTA DE AGREGADOS DE CONSTRUCCION, CARPINTERIA, PREFABRICADOS, MATERIALES ELECTRICOS Y SERVICIOS GENERALES PARA:';
+          const servicesList = 'PROYECTOS CIVILES, ELECTROMECANICOS, CARPINTERIA Y SERVICIOS EN GENERAL, INSTALACIONES ELECTRICAS EN MEDIA Y BAJA TENSION, EN PLANTAS MINERAS, EN LOCALES COMERCIALES E INDUSTRIALES, COMUNICACIONES, ILUMINACION DE CAMPOS DEPORTIVOS, INSTALACION DE TABLEROS ELECTRICOS DOMESTICOS E INDUSTRIALES';
 
-
-          // --- SERVICIOS ---
-          const servicesText = 'ALQUILER DE MAQUINARIA, VENTA DE AGREGADOS DE CONSTRUCCION, CARPINTERIA, PREFABRICADOS, MATERIALES ELECTRICOS Y SERVICIOS GENERALES PARA: PROYECTOS CIVILES, ELECTROMECANICOS, CARPINTERIA Y SERVICIOS EN GENERAL, INSTALACIONES ELECTRICAS EN MEDIA Y BAJA TENSION, EN PLANTAS MINERAS, EN LOCALES COMERCIALES E INDUSTRIALES, COMUNICACIONES, ILUMINACION DE CAMPOS DEPORTIVOS, INSTALACION DE TABLEROS ELECTRICOS DOMESTICOS E INDUSTRIALES';
           doc.setFontSize(7);
+          doc.setTextColor(secondaryColor);
           doc.setFont('helvetica', 'bold');
-          doc.setTextColor(0, 0, 139); // Color azul oscuro
-          doc.text(servicesText, 105, 35, { align: 'center', maxWidth: 180 });
+          doc.text(servicesTitle, leftMargin, currentY, { maxWidth: 120 });
+          currentY += 8; // Espacio extra después del título de servicios
 
-          // --- DIRECCIÓN ---
+          doc.setFont('helvetica', 'normal');
+          doc.text(servicesList, leftMargin, currentY, { maxWidth: 120, lineHeightFactor: 1.5 });
+          currentY += 15;
+
+          // --- Dirección ---
           doc.setFontSize(9);
-          doc.text('CALLE LOS SAUDES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 105, 55, { align: 'center' });
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(primaryColor);
+          doc.text('CALLE LOS SAUDES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 105, 60, { align: 'center' });
+
 
           // --- SEPARADOR Y DATOS DEL CLIENTE ---
-          doc.line(15, 65, 195, 65); // Línea horizontal separadora
-          doc.setTextColor(0, 0, 0); // Resetear a color negro
+          doc.line(15, 68, 195, 68); // Línea horizontal separadora
           doc.setFontSize(11);
           doc.setFont('helvetica', 'bold');
           doc.text("CLIENTE:", 15, 75);
