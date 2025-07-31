@@ -73,31 +73,65 @@ export class QuoteCreator {
       this.formatCurrency((item.cantidad || 0) * (item.precioUnitario || 0))
     ]);
 
-    // Cargar las imágenes de logo y firma
     const logoBase64 = await this._getBase64ImageFromURL('assets/logo.png');
     const firmaBase64 = await this._getBase64ImageFromURL('assets/firma.png');
 
     autoTable(doc, {
-      head: head, body: body, startY: 85,
+      head: head, body: body,
+      margin: { top: 85, bottom: 50 },
       theme: 'grid',
       headStyles: { fillColor: [233, 236, 239], textColor: [33, 37, 41] },
       didDrawPage: (data: any) => {
-        // --- ENCABEZADO ---
-        if (logoBase64) { doc.addImage(logoBase64, 'PNG', 15, 15, 40, 30); }
-        // ... (resto del código del encabezado que ya funcionaba)
-
-        // --- PIE DE PÁGINA ---
-        const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
+        // ==========================================================
+        // ===== ENCABEZADO (CÓDIGO RESTAURADO Y COMPLETO) ==========
+        // ==========================================================
+        const leftMargin = 15;
+        const rightMargin = 195;
         const primaryColor = '#2B3D4F';
         const secondaryColor = '#6c757d';
 
-        // Paginación
+        if (logoBase64) {
+          doc.addImage(logoBase64, 'PNG', leftMargin, 15, 40, 30);
+        }
+
+        doc.setFontSize(20); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
+        doc.text('COTIZACIÓN', rightMargin, 20, { align: 'right' });
+        doc.setFontSize(11); doc.setFont('helvetica', 'normal'); doc.setTextColor(secondaryColor);
+        doc.text(this.numeroCotizacion, rightMargin, 27, { align: 'right' });
+        doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
+        doc.text('R.U.C. Nº 10215770635', rightMargin, 34, { align: 'right' });
+
+        const textStartX = leftMargin + 45;
+        let currentY = 18;
+        doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
+        doc.text('ELECTROFERRETERO "VIRGEN DEL CARMEN"', textStartX, currentY);
+        currentY += 5;
+        doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(secondaryColor);
+        doc.text('DE: MARIA LUZ MITMA TORRES', textStartX, currentY);
+
+        doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
+        doc.text('CALLE LOS SAUDES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 105, 60, { align: 'center' });
+
+        doc.line(15, 68, 195, 68);
+        doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+        doc.text("CLIENTE:", 15, 75);
+        doc.setFont('helvetica', 'normal');
+        doc.text(this.cliente, 40, 75);
+        doc.setFont('helvetica', 'bold');
+        doc.text("FECHA:", 140, 75);
+        doc.setFont('helvetica', 'normal');
+        doc.text(this.fecha, 160, 75);
+
+        // ==========================================================
+        // ===== PIE DE PÁGINA (CÓDIGO COMPLETO) ====================
+        // ==========================================================
+        const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
         const pageCount = (doc as any).internal.getNumberOfPages();
+
         doc.setFontSize(8);
         doc.setTextColor(secondaryColor);
-        doc.text('Página ' + data.pageNumber + ' de ' + pageCount, 195, pageHeight - 10, { align: 'right' });
+        doc.text('Página ' + data.pageNumber + ' de ' + pageCount, rightMargin, pageHeight - 10, { align: 'right' });
 
-        // Cuentas Bancarias (transcritas de tu imagen)
         let footerY = pageHeight - 35;
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
@@ -113,7 +147,6 @@ export class QuoteCreator {
         doc.text("YAPE: 959371078", 80, footerY);
         doc.text("PLIN: 982079142", 80, footerY + 4);
 
-        // Firma
         if (firmaBase64) {
             doc.addImage(firmaBase64, 'PNG', 140, pageHeight - 40, 50, 25);
         }
@@ -125,7 +158,12 @@ export class QuoteCreator {
     });
 
     const finalY = (doc as any).lastAutoTable.finalY;
-    // ... (resto del código de los totales)
+    const summaryX = 130;
+    doc.setFontSize(11); doc.setFont('helvetica', 'normal');
+    doc.text("Subtotal:", summaryX, finalY + 10); doc.text(this.formatCurrency(this.subtotal), 195, finalY + 10, { align: 'right' });
+    doc.text("IGV (18%):", summaryX, finalY + 17); doc.text(this.formatCurrency(this.igv), 195, finalY + 17, { align: 'right' });
+    doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+    doc.text("TOTAL:", summaryX, finalY + 25); doc.text(this.formatCurrency(this.total), 195, finalY + 25, { align: 'right' });
 
     doc.save(`Cotizacion-${this.numeroCotizacion}.pdf`);
   }
@@ -141,13 +179,9 @@ export class QuoteCreator {
         if (ctx) {
           ctx.drawImage(img, 0, 0);
           resolve(canvas.toDataURL('image/png'));
-        } else {
-          resolve(null);
-        }
+        } else { resolve(null); }
       };
-      img.onerror = () => {
-        resolve(null);
-      };
+      img.onerror = () => { resolve(null); };
       img.src = url;
     });
   }
