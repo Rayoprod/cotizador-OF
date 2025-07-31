@@ -66,8 +66,8 @@ export class QuoteCreator {
 
   async generarPDF(): Promise<void> {
     try {
-      const logoBase64 = await this._getBase64ImageFromURL('assets/logo.png');
-      const firmaBase64 = await this._getBase64ImageFromURL('assets/firma.png');
+      const logoBase64 = await this._getBase64ImageFromURL('assets/logowym');
+      const firmaBase64 = await this._getBase64ImageFromURL('assets/FIRMA_MARIALUZ.png');
 
       const doc = new jsPDF();
       const head = [['#', 'Descripción', 'Unidad', 'Cant.', 'P. Unit.', 'Total']];
