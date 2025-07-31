@@ -91,8 +91,8 @@ export class QuoteCreator {
     return formatter.format(value || 0).replace('PEN', 'S/ ');
   }
 
-  // FUNCIÓN CONVERTIDA A ASÍNCRONA PARA CARGAR LA IMAGEN
-  async generarPDF(): Promise<void> {
+  // FUNCIÓN SIMPLIFICADA, SIN LÓGICA DE IMAGEN
+  generarPDF(): void {
     const doc = new jsPDF();
     const head = [['#', 'Descripción', 'Unidad', 'Cant.', 'P. Unit.', 'Total']];
     const body = this.items.map((item, index) => [
@@ -101,67 +101,53 @@ export class QuoteCreator {
       this.formatCurrency((item.cantidad || 0) * (item.precioUnitario || 0))
     ]);
 
-    // --- NUEVO: Cargar la imagen del logo ---
-    const logoBase64 = await this._getBase64ImageFromURL('assets/logo.png');
-
     autoTable(doc, {
       head: head, body: body, startY: 85,
       theme: 'grid',
       headStyles: { fillColor: [233, 236, 239], textColor: [33, 37, 41] },
       didDrawPage: (data: any) => {
-        const pageContent = () => {
-          const leftMargin = 15;
-          const rightMargin = 195;
-          const primaryColor = '#2B3D4F';
-          const secondaryColor = '#6c757d';
+        const leftMargin = 15;
+        const rightMargin = 195;
+        const primaryColor = '#2B3D4F';
+        const secondaryColor = '#6c757d';
 
-          // --- AÑADIR IMAGEN DEL LOGO AL PDF ---
-          if (logoBase64) {
-            doc.addImage(logoBase64, 'PNG', leftMargin, 15, 40, 30);
-          }
+        // --- COLUMNA DERECHA: Datos de la Cotización ---
+        doc.setFontSize(20); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
+        doc.text('COTIZACIÓN', rightMargin, 20, { align: 'right' });
+        doc.setFontSize(11); doc.setFont('helvetica', 'normal'); doc.setTextColor(secondaryColor);
+        doc.text(this.numeroCotizacion, rightMargin, 27, { align: 'right' });
+        doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
+        doc.text('R.U.C. Nº 10215770635', rightMargin, 34, { align: 'right' });
 
-          // --- COLUMNA DERECHA: Datos de la Cotización ---
-          doc.setFontSize(20); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
-          doc.text('COTIZACIÓN', rightMargin, 20, { align: 'right' });
-          doc.setFontSize(11); doc.setFont('helvetica', 'normal'); doc.setTextColor(secondaryColor);
-          doc.text(this.numeroCotizacion, rightMargin, 27, { align: 'right' });
-          doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
-          doc.text('R.U.C. Nº 10215770635', rightMargin, 34, { align: 'right' });
+        // --- COLUMNA IZQUIERDA: Datos de la Empresa ---
+        let currentY = 15;
+        doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
+        doc.text('ELECTROFERRETERO "VIRGEN DEL CARMEN"', leftMargin, currentY);
+        currentY += 5;
+        doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(0, 0, 0);
+        doc.text('DE: MARIA LUZ MITMA TORRES', leftMargin, currentY);
+        currentY += 8;
+        const servicesText = 'ALQUILER DE MAQUINARIA, VENTA DE AGREGADOS, CARPINTERÍA, PREFABRICADOS, MATERIALES ELÉCTRICOS Y SERVICIOS GENERALES.';
+        doc.setFontSize(7); doc.setTextColor(secondaryColor);
+        doc.text(servicesText, leftMargin, currentY, { maxWidth: 110, lineHeightFactor: 1.4 });
 
-          // --- COLUMNA IZQUIERDA: Datos de la Empresa ---
-          const textStartX = leftMargin + 45;
-          let currentY = 18;
-          doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
-          doc.text('ELECTROFERRETERO "VIRGEN DEL CARMEN"', textStartX, currentY);
-          currentY += 5;
-          doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(secondaryColor);
-          doc.text('DE: MARIA LUZ MITMA TORRES', textStartX, currentY);
-          currentY += 8;
-
-          const servicesText = 'ALQUILER DE MAQUINARIA, VENTA DE AGREGADOS, CARPINTERÍA, PREFABRICADOS, MATERIALES ELÉCTRICOS Y SERVICIOS GENERALES.';
-          doc.setFontSize(7);
-          doc.text(servicesText, textStartX, currentY, { maxWidth: 90 });
-
-          // --- Dirección y Datos del Cliente ---
-          doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
-          doc.text('CALLE LOS SAUDES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 105, 60, { align: 'center' });
-          doc.line(15, 68, 195, 68);
-          doc.setFontSize(11); doc.setFont('helvetica', 'bold');
-          doc.text("CLIENTE:", 15, 75);
-          doc.setFont('helvetica', 'normal');
-          doc.text(this.cliente, 40, 75);
-          doc.setFont('helvetica', 'bold');
-          doc.text("FECHA:", 140, 75);
-          doc.setFont('helvetica', 'normal');
-          doc.text(this.fecha, 160, 75);
-        };
-        pageContent();
+        // --- Dirección y Datos del Cliente ---
+        doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
+        doc.text('CALLE LOS SAUDES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 105, 60, { align: 'center' });
+        doc.line(15, 68, 195, 68);
+        doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+        doc.text("CLIENTE:", 15, 75);
+        doc.setFont('helvetica', 'normal');
+        doc.text(this.cliente, 40, 75);
+        doc.setFont('helvetica', 'bold');
+        doc.text("FECHA:", 140, 75);
+        doc.setFont('helvetica', 'normal');
+        doc.text(this.fecha, 160, 75);
       },
     });
 
     const finalY = (doc as any).lastAutoTable.finalY;
     const summaryX = 130;
-    // ... (el resto del código para dibujar los totales se mantiene igual)
     doc.setFontSize(11); doc.setFont('helvetica', 'normal');
     doc.text("Subtotal:", summaryX, finalY + 10); doc.text(this.formatCurrency(this.subtotal), 195, finalY + 10, { align: 'right' });
     doc.text("IGV (18%):", summaryX, finalY + 17); doc.text(this.formatCurrency(this.igv), 195, finalY + 17, { align: 'right' });
@@ -169,30 +155,5 @@ export class QuoteCreator {
     doc.text("TOTAL:", summaryX, finalY + 25); doc.text(this.formatCurrency(this.total), 195, finalY + 25, { align: 'right' });
 
     doc.save(`Cotizacion-${this.numeroCotizacion}.pdf`);
-  }
-
-  // --- NUEVA FUNCIÓN PRIVADA PARA CONVERTIR IMAGEN A BASE64 ---
-  private _getBase64ImageFromURL(url: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.setAttribute('crossOrigin', 'anonymous');
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0);
-          const dataURL = canvas.toDataURL('image/png');
-          resolve(dataURL);
-        } else {
-          reject(new Error('No se pudo obtener el contexto del canvas.'));
-        }
-      };
-      img.onerror = error => {
-        reject(error);
-      };
-      img.src = url;
-    });
   }
 }
