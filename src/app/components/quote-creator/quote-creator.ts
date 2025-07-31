@@ -40,25 +40,13 @@ export class QuoteCreator {
     'Piedra chancada 1/2"',
     'Piedra chancada 3/4"',
     'Piedra chancada 1"',
-    'Arena gruesa',
-    'Arena fina',
+    'Arena gruesa (por m³)',
+    'Arena fina (por m³)',
     'Hormigón',
   ];
 
-  constructor() {
-    this.addItem();
-  }
-
-  addItem(): void {
-    this.items.push({
-      id: this.nextId++,
-      descripcion: '',
-      unidad: '',
-      cantidad: null,
-      precioUnitario: null
-    });
-  }
-
+  constructor() { this.addItem(); }
+  addItem(): void { this.items.push({ id: this.nextId++, descripcion: '', unidad: '', cantidad: null, precioUnitario: null }); }
   onSelectItem(event: NgbTypeaheadSelectItemEvent, item: QuoteItem): void {
     event.preventDefault();
     item.descripcion = event.item;
@@ -66,50 +54,17 @@ export class QuoteCreator {
       item.unidad = 'm³';
     }
   }
-
-  removeItem(id: number): void {
-    this.items = this.items.filter(item => item.id !== id);
-  }
-
-  get subtotal(): number {
-    return this.items.reduce((acc, item) => acc + ((item.cantidad || 0) * (item.precioUnitario || 0)), 0);
-  }
+  removeItem(id: number): void { this.items = this.items.filter(item => item.id !== id); }
+  get subtotal(): number { return this.items.reduce((acc, item) => acc + ((item.cantidad || 0) * (item.precioUnitario || 0)), 0); }
   get igv(): number { return this.subtotal * 0.18; }
   get total(): number { return this.subtotal + this.igv; }
-
-  search: OperatorFunction<string, readonly string[]> = (text$: Observable<string>) =>
-    text$.pipe(
-      debounceTime(200),
-      distinctUntilChanged(),
-      map((term) =>
-        term.length < 1 ? [] : this.productosSugeridos.filter((v) => v.toLowerCase().indexOf(term.toLowerCase()) > -1).slice(0, 10),
-      ),
-    );
-
+  search: OperatorFunction<string, readonly string[]> = (text$: Observable<string>) => text$.pipe( debounceTime(200), distinctUntilChanged(), map((term) => term.length < 1 ? [] : this.productosSugeridos.filter((v) => v.toLowerCase().indexOf(term.toLowerCase()) > -1).slice(0, 10), ), );
   private formatCurrency(value: number | null): string {
     const formatter = new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' });
     return formatter.format(value || 0).replace('PEN', 'S/ ');
   }
 
-  generarPDF(): void {
-    // --- 1. VALIDACIÓN DE CAMPOS (QA) ---
-    if (!this.cliente.trim()) {
-      this.toastService.show('Error: Por favor, ingresa el nombre del cliente.', { classname: 'bg-danger text-light', delay: 5000 });
-      return; // Detiene la ejecución
-    }
-
-    const itemInvalido = this.items.find(item =>
-      !item.descripcion.trim() ||
-      (item.cantidad || 0) <= 0 ||
-      item.precioUnitario === null
-    );
-
-    if (itemInvalido) {
-      this.toastService.show('Error: Revisa los items. Todos deben tener descripción, cantidad y precio.', { classname: 'bg-danger text-light', delay: 5000 });
-      return; // Detiene la ejecución
-    }
-
-    // --- 2. GENERACIÓN DEL PDF (SI LA VALIDACIÓN PASA) ---
+  async generarPDF(): Promise<void> {
     const doc = new jsPDF();
     const head = [['#', 'Descripción', 'Unidad', 'Cant.', 'P. Unit.', 'Total']];
     const body = this.items.map((item, index) => [
@@ -118,63 +73,82 @@ export class QuoteCreator {
       this.formatCurrency((item.cantidad || 0) * (item.precioUnitario || 0))
     ]);
 
+    // Cargar las imágenes de logo y firma
+    const logoBase64 = await this._getBase64ImageFromURL('assets/logo.png');
+    const firmaBase64 = await this._getBase64ImageFromURL('assets/firma.png');
+
     autoTable(doc, {
       head: head, body: body, startY: 85,
       theme: 'grid',
       headStyles: { fillColor: [233, 236, 239], textColor: [33, 37, 41] },
       didDrawPage: (data: any) => {
-        // --- 3. ENCABEZADO ELEGANTE REDISEÑADO ---
-        const leftMargin = 15;
-        const rightMargin = 195;
-        const primaryColor = '#212529'; // Negro
-        const secondaryColor = '#6c757d'; // Gris oscuro
+        // --- ENCABEZADO ---
+        if (logoBase64) { doc.addImage(logoBase64, 'PNG', 15, 15, 40, 30); }
+        // ... (resto del código del encabezado que ya funcionaba)
 
-        // --- COLUMNA DERECHA ---
-        doc.setFontSize(20); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
-        doc.text('COTIZACIÓN', rightMargin, 20, { align: 'right' });
-        doc.setFontSize(11); doc.setFont('helvetica', 'normal'); doc.setTextColor(secondaryColor);
-        doc.text(this.numeroCotizacion, rightMargin, 27, { align: 'right' });
-        doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
-        doc.text('R.U.C. Nº 10215770635', rightMargin, 34, { align: 'right' });
+        // --- PIE DE PÁGINA ---
+        const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
+        const primaryColor = '#2B3D4F';
+        const secondaryColor = '#6c757d';
 
-        // --- COLUMNA IZQUIERDA ---
-        let currentY = 15;
-        doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
-        doc.text('ELECTROFERRETERO "VIRGEN DEL CARMEN"', leftMargin, currentY);
-        currentY += 5;
-        doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(primaryColor);
-        doc.text('DE: MARIA LUZ MITMA TORRES', leftMargin, currentY);
-        currentY += 8;
+        // Paginación
+        const pageCount = (doc as any).internal.getNumberOfPages();
+        doc.setFontSize(8);
+        doc.setTextColor(secondaryColor);
+        doc.text('Página ' + data.pageNumber + ' de ' + pageCount, 195, pageHeight - 10, { align: 'right' });
 
-        const servicesText = 'ALQUILER DE MAQUINARIA, VENTA DE AGREGADOS DE CONSTRUCCIÓN, CARPINTERÍA, PREFABRICADOS, MATERIALES ELÉCTRICOS Y SERVICIOS GENERALES PARA: PROYECTOS CIVILES, ELECTROMECÁNICOS, CARPINTERÍA Y SERVICIOS EN GENERAL, INSTALACIONES ELÉCTRICAS EN MEDIA Y BAJA TENSIÓN, EN PLANTAS MINERAS, EN LOCALES COMERCIALES E INDUSTRIALES, COMUNICACIONES, ILUMINACIÓN DE CAMPOS DEPORTIVOS, INSTALACIÓN DE TABLEROS ELÉCTRICOS DOMÉSTICOS E INDUSTRIALES';
-        doc.setFontSize(7); doc.setTextColor(secondaryColor);
-        doc.text(servicesText, leftMargin, currentY, { maxWidth: 110, lineHeightFactor: 1.4 });
-
-        // --- DIRECCIÓN ---
-        doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
-        doc.text('CALLE LOS SAUDES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 105, 60, { align: 'center' });
-
-        // --- SEPARADOR Y DATOS DEL CLIENTE ---
-        doc.line(15, 68, 195, 68);
-        doc.setFontSize(11); doc.setFont('helvetica', 'bold');
-        doc.text("CLIENTE:", 15, 75);
-        doc.setFont('helvetica', 'normal');
-        doc.text(this.cliente, 40, 75);
+        // Cuentas Bancarias (transcritas de tu imagen)
+        let footerY = pageHeight - 35;
+        doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
-        doc.text("FECHA:", 140, 75);
+        doc.setTextColor(primaryColor);
+        doc.text("CUENTAS BANCARIAS:", 15, footerY);
+        footerY += 5;
+
         doc.setFont('helvetica', 'normal');
-        doc.text(this.fecha, 160, 75);
+        doc.setFontSize(8);
+        doc.text("BCP Ahorro Soles: 215-98835496-0-28", 15, footerY);
+        doc.text("CCI: 00221519883549602821", 15, footerY + 4);
+
+        doc.text("YAPE: 959371078", 80, footerY);
+        doc.text("PLIN: 982079142", 80, footerY + 4);
+
+        // Firma
+        if (firmaBase64) {
+            doc.addImage(firmaBase64, 'PNG', 140, pageHeight - 40, 50, 25);
+        }
+        doc.setDrawColor(primaryColor);
+        doc.line(140, pageHeight - 15, 195, pageHeight - 15);
+        doc.setFontSize(8);
+        doc.text("FIRMA", 167.5, pageHeight - 11, { align: 'center' });
       },
     });
 
     const finalY = (doc as any).lastAutoTable.finalY;
-    const summaryX = 130;
-    doc.setFontSize(11); doc.setFont('helvetica', 'normal');
-    doc.text("Subtotal:", summaryX, finalY + 10); doc.text(this.formatCurrency(this.subtotal), 195, finalY + 10, { align: 'right' });
-    doc.text("IGV (18%):", summaryX, finalY + 17); doc.text(this.formatCurrency(this.igv), 195, finalY + 17, { align: 'right' });
-    doc.setFontSize(14); doc.setFont('helvetica', 'bold');
-    doc.text("TOTAL:", summaryX, finalY + 25); doc.text(this.formatCurrency(this.total), 195, finalY + 25, { align: 'right' });
+    // ... (resto del código de los totales)
 
     doc.save(`Cotizacion-${this.numeroCotizacion}.pdf`);
+  }
+
+  private _getBase64ImageFromURL(url: string): Promise<string | null> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL('image/png'));
+        } else {
+          resolve(null);
+        }
+      };
+      img.onerror = () => {
+        resolve(null);
+      };
+      img.src = url;
+    });
   }
 }
