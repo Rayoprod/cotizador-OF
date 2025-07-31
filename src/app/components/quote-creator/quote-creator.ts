@@ -107,13 +107,22 @@ export class QuoteCreator {
       headStyles: { fillColor: [233, 236, 239], textColor: [33, 37, 41] },
       didDrawPage: (data: any) => {
         // ==========================================================
-        // ===== ENCABEZADO RE-DISEÑADO CON MEJOR FORMATO ==========
+        // ===== ENCABEZADO CON ESPACIO PARA LOGO Y MEJOR DISEÑO ====
         // ==========================================================
         const pageContent = () => {
           const leftMargin = 15;
           const rightMargin = 195;
-          const primaryColor = '#212529'; // Negro suave
+          const primaryColor = '#2B3D4F'; // Un gris azulado oscuro
           const secondaryColor = '#6c757d'; // Gris secundario
+
+          // --- ESPACIO PARA EL LOGO ---
+          doc.setDrawColor(222, 226, 230); // Borde gris claro
+          doc.setFillColor(248, 249, 250); // Fondo gris muy claro
+          doc.rect(leftMargin, 15, 40, 30, 'FD'); // Rectángulo del logo
+          doc.setTextColor(secondaryColor);
+          doc.setFontSize(10);
+          doc.text('LOGO', leftMargin + 20, 32, { align: 'center' });
+
 
           // --- COLUMNA DERECHA: Datos de la Cotización ---
           doc.setFontSize(20);
@@ -123,44 +132,41 @@ export class QuoteCreator {
 
           doc.setFontSize(11);
           doc.setFont('helvetica', 'normal');
+          doc.setTextColor(secondaryColor);
           doc.text(this.numeroCotizacion, rightMargin, 27, { align: 'right' });
 
           doc.setFont('helvetica', 'bold');
+          doc.setTextColor(primaryColor);
           doc.text('R.U.C. Nº 10215770635', rightMargin, 34, { align: 'right' });
 
 
-          // --- COLUMNA IZQUIERDA: Datos de la Empresa ---
-          let currentY = 15;
-          doc.setFontSize(14);
+          // --- TEXTO PRINCIPAL (al lado del logo) ---
+          const textStartX = leftMargin + 45; // Empezar texto después del logo
+          let currentY = 18;
+          doc.setFontSize(12);
           doc.setFont('helvetica', 'bold');
           doc.setTextColor(primaryColor);
-          doc.text('ELECTROFERRETERO "VIRGEN DEL CARMEN"', leftMargin, currentY);
+          doc.text('ELECTROFERRETERO "VIRGEN DEL CARMEN"', textStartX, currentY);
           currentY += 5;
 
-          doc.setFontSize(10);
+          doc.setFontSize(9);
           doc.setFont('helvetica', 'normal');
-          doc.text('DE: MARIA LUZ MITMA TORRES', leftMargin, currentY);
+          doc.setTextColor(secondaryColor);
+          doc.text('DE: MARIA LUZ MITMA TORRES', textStartX, currentY);
           currentY += 8;
 
-          // --- Servicios con formato mejorado ---
-          const servicesTitle = 'ALQUILER DE MAQUINARIA, VENTA DE AGREGADOS DE CONSTRUCCION, CARPINTERIA, PREFABRICADOS, MATERIALES ELECTRICOS Y SERVICIOS GENERALES PARA:';
-          const servicesList = 'PROYECTOS CIVILES, ELECTROMECANICOS, CARPINTERIA Y SERVICIOS EN GENERAL, INSTALACIONES ELECTRICAS EN MEDIA Y BAJA TENSION, EN PLANTAS MINERAS, EN LOCALES COMERCIALES E INDUSTRIALES, COMUNICACIONES, ILUMINACION DE CAMPOS DEPORTIVOS, INSTALACION DE TABLEROS ELECTRICOS DOMESTICOS E INDUSTRIALES';
-
+          // --- Servicios (dividido para mejor lectura) ---
+          const servicesTitle = 'ALQUILER DE MAQUINARIA, VENTA DE AGREGADOS, CARPINTERÍA, PREFABRICADOS, MATERIALES ELÉCTRICOS Y SERVICIOS GENERALES.';
           doc.setFontSize(7);
           doc.setTextColor(secondaryColor);
-          doc.setFont('helvetica', 'bold');
-          doc.text(servicesTitle, leftMargin, currentY, { maxWidth: 120 });
-          currentY += 8; // Espacio extra después del título de servicios
-
-          doc.setFont('helvetica', 'normal');
-          doc.text(servicesList, leftMargin, currentY, { maxWidth: 120, lineHeightFactor: 1.5 });
+          doc.text(servicesTitle, textStartX, currentY, { maxWidth: 90 });
           currentY += 15;
 
-          // --- Dirección ---
+          // --- Dirección (abajo, centrada) ---
           doc.setFontSize(9);
           doc.setFont('helvetica', 'bold');
           doc.setTextColor(primaryColor);
-          doc.text('CALLE LOS SAUDES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 105, 60, { align: 'center' });
+          doc.text('CALLE LOS SAUCES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 105, 60, { align: 'center' });
 
 
           // --- SEPARADOR Y DATOS DEL CLIENTE ---
