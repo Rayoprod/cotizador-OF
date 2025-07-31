@@ -40,8 +40,8 @@ export class QuoteCreator {
     'Piedra chancada 1/2"',
     'Piedra chancada 3/4"',
     'Piedra chancada 1"',
-    'Arena gruesa (por m³)',
-    'Arena fina (por m³)',
+    'Arena gruesa',
+    'Arena fina',
     'Hormigón',
   ];
 
