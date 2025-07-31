@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { NgbTypeaheadModule } from '@ng-bootstrap/ng-bootstrap';
+import { NgbTypeaheadModule, NgbTypeaheadSelectItemEvent } from '@ng-bootstrap/ng-bootstrap';
 import { Observable, OperatorFunction } from 'rxjs';
 import { debounceTime, distinctUntilChanged, map } from 'rxjs/operators';
 import jsPDF from 'jspdf';
@@ -53,10 +53,20 @@ export class QuoteCreator {
     this.items.push({
       id: this.nextId++,
       descripcion: '',
-      unidad: 'm³',
+      unidad: '', // <-- NUEVO ITEM EMPIEZA CON UNIDAD VACÍA
       cantidad: null,
       precioUnitario: null
     });
+  }
+
+  // NUEVA FUNCIÓN: Se activa al seleccionar un item del autocompletado
+  onSelectItem(event: NgbTypeaheadSelectItemEvent, item: QuoteItem): void {
+    event.preventDefault();
+    item.descripcion = event.item;
+    // Si el item seleccionado está en nuestra lista, autocompletamos la unidad
+    if (this.productosSugeridos.includes(event.item)) {
+      item.unidad = 'm³';
+    }
   }
 
   removeItem(id: number): void {
@@ -66,21 +76,15 @@ export class QuoteCreator {
   get subtotal(): number {
     return this.items.reduce((acc, item) => acc + ((item.cantidad || 0) * (item.precioUnitario || 0)), 0);
   }
-
-  get igv(): number {
-    return this.subtotal * 0.18;
-  }
-
-  get total(): number {
-    return this.subtotal + this.igv;
-  }
+  get igv(): number { return this.subtotal * 0.18; }
+  get total(): number { return this.subtotal + this.igv; }
 
   search: OperatorFunction<string, readonly string[]> = (text$: Observable<string>) =>
     text$.pipe(
       debounceTime(200),
       distinctUntilChanged(),
       map((term) =>
-        term.length < 2 ? [] : this.productosSugeridos.filter((v) => v.toLowerCase().indexOf(term.toLowerCase()) > -1).slice(0, 10),
+        term.length < 1 ? [] : this.productosSugeridos.filter((v) => v.toLowerCase().indexOf(term.toLowerCase()) > -1).slice(0, 10),
       ),
     );
 
@@ -93,10 +97,7 @@ export class QuoteCreator {
     const doc = new jsPDF();
     const head = [['#', 'Descripción', 'Unidad', 'Cant.', 'P. Unit.', 'Total']];
     const body = this.items.map((item, index) => [
-      index + 1,
-      item.descripcion,
-      item.unidad,
-      item.cantidad,
+      index + 1, item.descripcion, item.unidad, item.cantidad,
       this.formatCurrency(item.precioUnitario),
       this.formatCurrency((item.cantidad || 0) * (item.precioUnitario || 0))
     ]);
@@ -107,83 +108,60 @@ export class QuoteCreator {
       headStyles: { fillColor: [233, 236, 239], textColor: [33, 37, 41] },
       didDrawPage: (data: any) => {
         // ==========================================================
-        // ===== ENCABEZADO CON ESPACIO PARA LOGO Y MEJOR DISEÑO ====
+        // ===== ENCABEZADO RE-DISEÑADO CON FORMATO PROFESIONAL =====
         // ==========================================================
-        const pageContent = () => {
-          const leftMargin = 15;
-          const rightMargin = 195;
-          const primaryColor = '#2B3D4F'; // Un gris azulado oscuro
-          const secondaryColor = '#6c757d'; // Gris secundario
+        const leftMargin = 15;
+        const rightMargin = 195;
+        const primaryColor = '#2B3D4F'; // Un gris azulado oscuro
+        const secondaryColor = '#6c757d'; // Gris secundario
 
-          // --- ESPACIO PARA EL LOGO ---
-          doc.setDrawColor(222, 226, 230); // Borde gris claro
-          doc.setFillColor(248, 249, 250); // Fondo gris muy claro
-          doc.rect(leftMargin, 15, 40, 30, 'FD'); // Rectángulo del logo
-          doc.setTextColor(secondaryColor);
-          doc.setFontSize(10);
-          doc.text('LOGO', leftMargin + 20, 32, { align: 'center' });
+        // --- COLUMNA DERECHA: Datos de la Cotización ---
+        doc.setFontSize(20);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(primaryColor);
+        doc.text('COTIZACIÓN', rightMargin, 20, { align: 'right' });
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        doc.text(this.numeroCotizacion, rightMargin, 27, { align: 'right' });
+        doc.setFont('helvetica', 'bold');
+        doc.text('R.U.C. Nº 10215770635', rightMargin, 34, { align: 'right' });
 
+        // --- COLUMNA IZQUIERDA: Datos de la Empresa ---
+        let currentY = 15;
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(primaryColor);
+        doc.text('ELECTROFERRETERO "VIRGEN DEL CARMEN"', leftMargin, currentY);
+        currentY += 5;
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(0, 0, 0);
+        doc.text('DE: MARIA LUZ MITMA TORRES', leftMargin, currentY);
+        currentY += 8;
 
-          // --- COLUMNA DERECHA: Datos de la Cotización ---
-          doc.setFontSize(20);
-          doc.setFont('helvetica', 'bold');
-          doc.setTextColor(primaryColor);
-          doc.text('COTIZACIÓN', rightMargin, 20, { align: 'right' });
+        // --- Servicios con formato mejorado ---
+        const servicesText = 'ALQUILER DE MAQUINARIA, VENTA DE AGREGADOS DE CONSTRUCCION, CARPINTERIA, PREFABRICADOS, MATERIALES ELECTRICOS Y SERVICIOS GENERALES PARA: PROYECTOS CIVILES, ELECTROMECANICOS, CARPINTERIA Y SERVICIOS EN GENERAL, INSTALACIONES ELECTRICAS EN MEDIA Y BAJA TENSION, EN PLANTAS MINERAS, EN LOCALES COMERCIALES E INDUSTRIALES, COMUNICACIONES, ILUMINACION DE CAMPOS DEPORTIVOS, INSTALACION DE TABLEROS ELECTRICOS DOMESTICOS E INDUSTRIALES';
+        doc.setFontSize(7);
+        doc.setTextColor(secondaryColor);
+        doc.text(servicesText, leftMargin, currentY, { maxWidth: 110, lineHeightFactor: 1.4 });
 
-          doc.setFontSize(11);
-          doc.setFont('helvetica', 'normal');
-          doc.setTextColor(secondaryColor);
-          doc.text(this.numeroCotizacion, rightMargin, 27, { align: 'right' });
+        // --- Dirección (abajo, centrada) ---
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(primaryColor);
+        doc.text('CALLE LOS SAUDES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 105, 60, { align: 'center' });
 
-          doc.setFont('helvetica', 'bold');
-          doc.setTextColor(primaryColor);
-          doc.text('R.U.C. Nº 10215770635', rightMargin, 34, { align: 'right' });
-
-
-          // --- TEXTO PRINCIPAL (al lado del logo) ---
-          const textStartX = leftMargin + 45; // Empezar texto después del logo
-          let currentY = 18;
-          doc.setFontSize(12);
-          doc.setFont('helvetica', 'bold');
-          doc.setTextColor(primaryColor);
-          doc.text('ELECTROFERRETERO "VIRGEN DEL CARMEN"', textStartX, currentY);
-          currentY += 5;
-
-          doc.setFontSize(9);
-          doc.setFont('helvetica', 'normal');
-          doc.setTextColor(secondaryColor);
-          doc.text('DE: MARIA LUZ MITMA TORRES', textStartX, currentY);
-          currentY += 8;
-
-          // --- Servicios (dividido para mejor lectura) ---
-          const servicesTitle = 'ALQUILER DE MAQUINARIA, VENTA DE AGREGADOS, CARPINTERÍA, PREFABRICADOS, MATERIALES ELÉCTRICOS Y SERVICIOS GENERALES.';
-          doc.setFontSize(7);
-          doc.setTextColor(secondaryColor);
-          doc.text(servicesTitle, textStartX, currentY, { maxWidth: 90 });
-          currentY += 15;
-
-          // --- Dirección (abajo, centrada) ---
-          doc.setFontSize(9);
-          doc.setFont('helvetica', 'bold');
-          doc.setTextColor(primaryColor);
-          doc.text('CALLE LOS SAUCES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 105, 60, { align: 'center' });
-
-
-          // --- SEPARADOR Y DATOS DEL CLIENTE ---
-          doc.line(15, 68, 195, 68); // Línea horizontal separadora
-          doc.setFontSize(11);
-          doc.setFont('helvetica', 'bold');
-          doc.text("CLIENTE:", 15, 75);
-          doc.setFont('helvetica', 'normal');
-          doc.text(this.cliente, 40, 75);
-
-          doc.setFont('helvetica', 'bold');
-          doc.text("FECHA:", 140, 75);
-          doc.setFont('helvetica', 'normal');
-          doc.text(this.fecha, 160, 75);
-        };
-
-        pageContent();
+        // --- SEPARADOR Y DATOS DEL CLIENTE ---
+        doc.line(15, 68, 195, 68);
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.text("CLIENTE:", 15, 75);
+        doc.setFont('helvetica', 'normal');
+        doc.text(this.cliente, 40, 75);
+        doc.setFont('helvetica', 'bold');
+        doc.text("FECHA:", 140, 75);
+        doc.setFont('helvetica', 'normal');
+        doc.text(this.fecha, 160, 75);
       },
     });
 
