@@ -103,7 +103,8 @@ export class QuoteCreator {
     return formatter.format(value || 0).replace('PEN', 'S/ ');
   }
 
-  generarPDF(): void {
+  // MÉTODO CONVERTIDO A ASYNC PARA LA FUNCIÓN DE COMPARTIR
+  async generarPDF(): Promise<void> {
     if (!this.cliente.trim()) {
       this.toastService.show('Error: Por favor, ingresa el nombre del cliente.', { classname: 'bg-danger text-light', delay: 5000 });
       return;
@@ -115,7 +116,7 @@ export class QuoteCreator {
     }
 
     const doc = new jsPDF();
-    const head = [['N°', 'Descripción', 'Unidad', 'Cant.', 'P. Unit.', 'Total']];
+    const head = [['#', 'Descripción', 'Unidad', 'Cant.', 'P. Unit.', 'Total']];
     const body = this.items.map((item, index) => [
       index + 1, item.descripcion, item.unidad, item.cantidad,
       this.formatCurrency(item.precioUnitario),
@@ -133,7 +134,6 @@ export class QuoteCreator {
         const rightMargin = 195;
         const primaryColor = '#212529';
         const secondaryColor = '#6c757d';
-
         doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
         doc.text('ELECTROFERRETERO "VIRGEN DEL CARMEN"', leftMargin, 15);
         doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(primaryColor);
@@ -142,17 +142,14 @@ export class QuoteCreator {
         const servicesText = 'ALQUILER DE MAQUINARIA, VENTA DE AGREGADOS DE CONSTRUCCIÓN, CARPINTERÍA, PREFABRICADOS, MATERIALES ELÉCTRICOS Y SERVICIOS GENERALES PARA: PROYECTOS CIVILES, ELECTROMECÁNICOS, CARPINTERÍA Y SERVICIOS EN GENERAL, INSTALACIONES ELÉCTRICAS EN MEDIA Y BAJA TENSIÓN, EN PLANTAS MINERAS, EN LOCALES COMERCIALES E INDUSTRIALES, COMUNICACIONES, ILUMINACIÓN DE CAMPOS DEPORTIVOS, INSTALACIÓN DE TABLEROS ELÉCTRICOS DOMÉSTICOS E INDUSTRIALES';
         doc.setFontSize(7); doc.setTextColor(secondaryColor);
         doc.text(servicesText, leftMargin, currentY, { maxWidth: 110, lineHeightFactor: 1.4 });
-
         doc.setFontSize(20); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
         doc.text('COTIZACIÓN', rightMargin, 20, { align: 'right' });
         doc.setFontSize(11); doc.setFont('helvetica', 'normal'); doc.setTextColor(secondaryColor);
         doc.text(this.numeroCotizacion, rightMargin, 27, { align: 'right' });
         doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
         doc.text('R.U.C. Nº 10215770635', rightMargin, 34, { align: 'right' });
-
         doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
         doc.text('CALLE LOS SAUDES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 105, 55, { align: 'center' });
-
         doc.line(15, 68, 195, 68);
         doc.setFontSize(11); doc.setFont('helvetica', 'bold');
         doc.text("CLIENTE:", 15, 75);
@@ -197,7 +194,24 @@ export class QuoteCreator {
     doc.setFontSize(14); doc.setFont('helvetica', 'bold');
     doc.text("TOTAL:", summaryX, finalY + 25); doc.text(this.formatCurrency(this.total), 195, finalY + 25, { align: 'right' });
 
-    doc.save(`Cotizacion-${this.numeroCotizacion}.pdf`);
-    this.toastService.show('PDF generado con éxito.', { classname: 'bg-success text-light' });
+    // --- LÓGICA AGREGADA PARA COMPARTIR EN MÓVIL ---
+    const pdfBlob = doc.output('blob');
+    const fileName = `Cotizacion-${this.numeroCotizacion}.pdf`;
+    const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+    if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
+      try {
+        await navigator.share({
+          title: `Cotización ${this.numeroCotizacion}`,
+          files: [pdfFile],
+        });
+        this.toastService.show('¡Cotización compartida!', { classname: 'bg-success text-light' });
+      } catch (error) {
+        this.toastService.show('Se canceló la acción de compartir.', { classname: 'bg-info text-light' });
+      }
+    } else {
+      doc.save(fileName);
+      this.toastService.show('PDF descargado con éxito.', { classname: 'bg-success text-light' });
+    }
   }
 }
