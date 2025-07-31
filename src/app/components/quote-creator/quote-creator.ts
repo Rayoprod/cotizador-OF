@@ -8,12 +8,11 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { ToastService } from '../../services/toast';
 
-// INTERFAZ ACTUALIZADA
 export interface QuoteItem {
   id: number;
   descripcion: string;
   unidad: string;
-  cantidad: number | null; // <-- ACEPTA NULL
+  cantidad: number | null;
   precioUnitario: number | null;
 }
 
@@ -30,15 +29,13 @@ export interface QuoteItem {
   styleUrls: ['./quote-creator.scss']
 })
 export class QuoteCreator {
-  numeroCotizacion: string = '';
+  numeroCotizacion: string = 'COT-2025-001';
   cliente: string = '';
-  // FECHA AUTOMÁTICA
   fecha: string = new Date().toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
   items: QuoteItem[] = [];
   private nextId = 1;
   toastService = inject(ToastService);
 
-  // LISTA DE MATERIALES ACTUALIZADA
   productosSugeridos: string[] = [
     'Piedra chancada 1/2"',
     'Piedra chancada 3/4"',
@@ -57,7 +54,7 @@ export class QuoteCreator {
       id: this.nextId++,
       descripcion: '',
       unidad: 'm³',
-      cantidad: null, // <-- EMPIEZA VACÍO
+      cantidad: null,
       precioUnitario: null
     });
   }
@@ -105,16 +102,58 @@ export class QuoteCreator {
     ]);
 
     autoTable(doc, {
-      head: head, body: body, startY: 55, theme: 'grid',
+      head: head, body: body, startY: 85,
+      theme: 'grid',
       headStyles: { fillColor: [233, 236, 239], textColor: [33, 37, 41] },
       didDrawPage: (data: any) => {
-        doc.setFontSize(22); doc.text("COTIZACIÓN", 195, 20, { align: 'right' });
-        doc.setFontSize(12); doc.text(this.numeroCotizacion, 195, 28, { align: 'right' });
-        doc.text("Tu Empresa S.A.C.", 15, 28); doc.line(15, 35, 195, 35);
-        doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.text("CLIENTE:", 15, 45);
-        doc.setFont('helvetica', 'normal'); doc.text(this.cliente, 40, 45);
-        doc.setFont('helvetica', 'bold'); doc.text("FECHA:", 140, 45);
-        doc.setFont('helvetica', 'normal'); doc.text(this.fecha, 160, 45);
+        // --- ENCABEZADO COMBINADO Y CORREGIDO ---
+        const pageContent = () => {
+          // --- TÍTULO EMPRESA Y TÍTULO COTIZACIÓN ---
+          doc.setFontSize(14);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(0, 0, 139); // Color azul oscuro
+          doc.text('ELECTROFERRETERO "VIRGEN DEL CARMEN"', 105, 15, { align: 'center' });
+
+          doc.setFontSize(20);
+          doc.text('COTIZACIÓN', 195, 15, { align: 'right' });
+
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(0, 0, 0); // Color negro
+          doc.text('DE: MARIA LUZ MITMA TORRES', 105, 20, { align: 'center' });
+
+          doc.setFont('helvetica', 'bold');
+          doc.text(this.numeroCotizacion, 195, 20, { align: 'right' });
+          doc.text('R.U.C. Nº 10215770635', 195, 25, { align: 'right' });
+
+
+          // --- SERVICIOS ---
+          const servicesText = 'ALQUILER DE MAQUINARIA, VENTA DE AGREGADOS DE CONSTRUCCION, CARPINTERIA, PREFABRICADOS, MATERIALES ELECTRICOS Y SERVICIOS GENERALES PARA: PROYECTOS CIVILES, ELECTROMECANICOS, CARPINTERIA Y SERVICIOS EN GENERAL, INSTALACIONES ELECTRICAS EN MEDIA Y BAJA TENSION, EN PLANTAS MINERAS, EN LOCALES COMERCIALES E INDUSTRIALES, COMUNICACIONES, ILUMINACION DE CAMPOS DEPORTIVOS, INSTALACION DE TABLEROS ELECTRICOS DOMESTICOS E INDUSTRIALES';
+          doc.setFontSize(7);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(0, 0, 139); // Color azul oscuro
+          doc.text(servicesText, 105, 35, { align: 'center', maxWidth: 180 });
+
+          // --- DIRECCIÓN ---
+          doc.setFontSize(9);
+          doc.text('CALLE LOS SAUDES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 105, 55, { align: 'center' });
+
+          // --- SEPARADOR Y DATOS DEL CLIENTE ---
+          doc.line(15, 65, 195, 65); // Línea horizontal separadora
+          doc.setTextColor(0, 0, 0); // Resetear a color negro
+          doc.setFontSize(11);
+          doc.setFont('helvetica', 'bold');
+          doc.text("CLIENTE:", 15, 75);
+          doc.setFont('helvetica', 'normal');
+          doc.text(this.cliente, 40, 75);
+
+          doc.setFont('helvetica', 'bold');
+          doc.text("FECHA:", 140, 75);
+          doc.setFont('helvetica', 'normal');
+          doc.text(this.fecha, 160, 75);
+        };
+
+        pageContent();
       },
     });
 
