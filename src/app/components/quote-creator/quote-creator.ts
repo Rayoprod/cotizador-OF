@@ -157,14 +157,18 @@ export class QuoteCreator {
         doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
         doc.text('CALLE LOS SAUCES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 15, 48,);
         doc.line(15, 55, 195, 55);
+        const clienteX = 40;
+        const clienteY = 62;
+        const clienteMaxWidth = 95; // Ajusta este valor según sea necesario
+
         doc.setFontSize(11); doc.setFont('helvetica', 'bold');
-        doc.text("CLIENTE:", 15, 62);
+        doc.text("CLIENTE:", 15, clienteY);
         doc.setFont('helvetica', 'normal');
-        doc.text(this.cliente, 40, 62);
+        doc.text(this.cliente, clienteX, clienteY, { maxWidth: clienteMaxWidth });
         doc.setFont('helvetica', 'bold');
-        doc.text("FECHA:", 140, 62);
+        doc.text("FECHA:", 140, clienteY);
         doc.setFont('helvetica', 'normal');
-        doc.text(this.fecha, 160, 62);
+        doc.text(this.fecha, 160, clienteY);
 
         const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
         const pageCount = (doc as any).internal.getNumberOfPages();
