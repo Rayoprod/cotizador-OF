@@ -135,7 +135,7 @@ export class QuoteCreator {
         const primaryColor = '#212529';
         const secondaryColor = '#6c757d';
         doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
-        doc.text('ELECTROFERRETERO "VIRGEN DEL CARMEN"', leftMargin, 15);
+        doc.text('ELECTROFERRETERO "W&M"', leftMargin, 15);
         doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(primaryColor);
         doc.text('DE: MARIA LUZ MITMA TORRES', leftMargin, 20);
         let currentY = 25;
@@ -150,7 +150,7 @@ export class QuoteCreator {
         doc.text('R.U.C. Nº 10215770635', rightMargin, 34, { align: 'right' });
         doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
         doc.text('CALLE LOS SAUDES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 15, 48);
-        doc.line(15, 68, 195, 68);
+        doc.line(15, 55, 195, 68);
         doc.setFontSize(11); doc.setFont('helvetica', 'bold');
         doc.text("CLIENTE:", 15, 75);
         doc.setFont('helvetica', 'normal');
