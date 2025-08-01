@@ -125,7 +125,7 @@ export class QuoteCreator {
 
     autoTable(doc, {
       head: head, body: body,
-      margin: { top: 85, bottom: 60 },
+      margin: { top: 70, bottom: 60 },
       theme: 'grid',
       headStyles: { fillColor: [233, 236, 239], textColor: [33, 37, 41] },
       didDrawPage: (data: any) => {
