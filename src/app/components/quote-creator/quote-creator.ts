@@ -168,7 +168,6 @@ export class QuoteCreator {
         doc.text("CONDICIONES:", 15, footerY);
         footerY += 5;
         doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
-        doc.text("* PRECIOS NO INCLUYEN IGV", 15, footerY);
         doc.text("* EL MATERIAL SERA RECOGIDO EN CANTERA", 15, footerY + 4);
         footerY += 10;
         doc.setFontSize(9); doc.setFont('helvetica', 'bold');
