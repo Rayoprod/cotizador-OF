@@ -36,6 +36,10 @@ export class QuoteCreator {
   private nextId = 1;
   toastService = inject(ToastService);
 
+  // --- NUEVAS VARIABLES PARA LOS CHECKS ---
+  incluirIGV: boolean = true;
+  entregaEnObra: boolean = false;
+
   productosSugeridos: string[] = [
     'Piedra chancada 1/2"',
     'Piedra chancada 3/4"',
@@ -86,8 +90,12 @@ export class QuoteCreator {
   get subtotal(): number {
     return this.items.reduce((acc, item) => acc + ((item.cantidad || 0) * (item.precioUnitario || 0)), 0);
   }
-  get igv(): number { return this.subtotal * 0.18; }
-  get total(): number { return this.subtotal + this.igv; }
+  get igv(): number {
+    return this.incluirIGV ? this.subtotal * 0.18 : 0;
+  }
+  get total(): number {
+    return this.subtotal + this.igv;
+  }
 
   search: OperatorFunction<string, readonly string[]> = (text$: Observable<string>) =>
     text$.pipe(
@@ -128,7 +136,6 @@ export class QuoteCreator {
       theme: 'grid',
       headStyles: { fillColor: [233, 236, 239], textColor: [33, 37, 41] },
       didDrawPage: (data: any) => {
-        // --- ENCABEZADO COMPLETO ---
         const leftMargin = 15;
         const rightMargin = 195;
         const primaryColor = '#212529';
@@ -148,7 +155,7 @@ export class QuoteCreator {
         doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
         doc.text('R.U.C. Nº 10215770635', rightMargin, 34, { align: 'right' });
         doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
-        doc.text('CALLE LOS SAUCES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 15, 48);
+        doc.text('CALLE LOS SAUCES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 15, 48,);
         doc.line(15, 55, 195, 55);
         doc.setFontSize(11); doc.setFont('helvetica', 'bold');
         doc.text("CLIENTE:", 15, 62);
@@ -159,7 +166,6 @@ export class QuoteCreator {
         doc.setFont('helvetica', 'normal');
         doc.text(this.fecha, 160, 62);
 
-        // --- PIE DE PÁGINA COMPLETO ---
         const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
         const pageCount = (doc as any).internal.getNumberOfPages();
         let footerY = pageHeight - 55;
@@ -167,7 +173,15 @@ export class QuoteCreator {
         doc.text("CONDICIONES:", 15, footerY);
         footerY += 5;
         doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
-        doc.text("* EL MATERIAL SERA RECOGIDO EN CANTERA", 15, footerY + 4);
+        if (this.entregaEnObra) {
+          doc.text("* PRECIOS INCLUYEN TRANSPORTE A OBRA.", 15, footerY);
+        } else {
+          doc.text("* EL MATERIAL SERA RECOGIDO EN CANTERA.", 15, footerY);
+        }
+        if (!this.incluirIGV) {
+          doc.text("* PRECIOS NO INCLUYEN IGV.", 15, footerY + 4);
+        }
+
         footerY += 10;
         doc.setFontSize(9); doc.setFont('helvetica', 'bold');
         doc.text("Cuentas:", 15, footerY);
@@ -187,17 +201,22 @@ export class QuoteCreator {
     const finalY = (doc as any).lastAutoTable.finalY;
     const summaryX = 130;
     doc.setFontSize(11); doc.setFont('helvetica', 'normal');
-    doc.text("Subtotal:", summaryX, finalY + 10); doc.text(this.formatCurrency(this.subtotal), 195, finalY + 10, { align: 'right' });
-    doc.text("IGV (18%):", summaryX, finalY + 17); doc.text(this.formatCurrency(this.igv), 195, finalY + 17, { align: 'right' });
+
+    if (this.incluirIGV) {
+      doc.text("Subtotal:", summaryX, finalY + 10); doc.text(this.formatCurrency(this.subtotal), 195, finalY + 10, { align: 'right' });
+      doc.text("IGV (18%):", summaryX, finalY + 17); doc.text(this.formatCurrency(this.igv), 195, finalY + 17, { align: 'right' });
+    }
+
     doc.setFontSize(14); doc.setFont('helvetica', 'bold');
-    doc.text("TOTAL:", summaryX, finalY + 25); doc.text(this.formatCurrency(this.total), 195, finalY + 25, { align: 'right' });
+    const totalLabel = this.incluirIGV ? "TOTAL:" : "TOTAL SIN IGV:";
+    const totalY = this.incluirIGV ? finalY + 25 : finalY + 10;
+    doc.text(totalLabel, summaryX, totalY);
+    doc.text(this.formatCurrency(this.total), 195, totalY, { align: 'right' });
 
     const pdfBlob = doc.output('blob');
     const fileName = `Cotizacion-${this.numeroCotizacion}.pdf`;
     const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
-
     const isMobile = /Mobi/i.test(window.navigator.userAgent);
-
     if (isMobile && navigator.share && navigator.canShare({ files: [pdfFile] })) {
       try {
         await navigator.share({
