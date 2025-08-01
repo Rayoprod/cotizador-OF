@@ -6,7 +6,7 @@ import { Observable, OperatorFunction } from 'rxjs';
 import { debounceTime, distinctUntilChanged, map } from 'rxjs/operators';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { ToastService } from '../../services/toast';
+import { ToastService } from '../../services/toast'; // <-- RUTA CORREGIDA
 
 export interface QuoteItem {
   id: number;
@@ -130,9 +130,18 @@ export class QuoteCreator {
       this.formatCurrency((item.cantidad || 0) * (item.precioUnitario || 0))
     ]);
 
+    const clienteYPosition = 62;
+    const clienteMaxWidth = 95;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    const clienteTextLines = doc.splitTextToSize(this.cliente, clienteMaxWidth);
+    const clienteTextHeight = clienteTextLines.length * 5;
+    const tableStartY = clienteYPosition + clienteTextHeight + 8;
+
     autoTable(doc, {
       head: head, body: body,
-      margin: { top: 70, bottom: 60 },
+      startY: tableStartY,
+      margin: { bottom: 60 },
       theme: 'grid',
       headStyles: { fillColor: [233, 236, 239], textColor: [33, 37, 41] },
       didDrawPage: (data: any) => {
@@ -155,20 +164,16 @@ export class QuoteCreator {
         doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
         doc.text('R.U.C. Nº 10215770635', rightMargin, 34, { align: 'right' });
         doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
-        doc.text('CALLE LOS SAUCES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 15, 48,);
+        doc.text('CALLE LOS SAUCES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 15, 48);
         doc.line(15, 55, 195, 55);
-        const clienteX = 40;
-        const clienteY = 62;
-        const clienteMaxWidth = 95; // Ajusta este valor según sea necesario
-
         doc.setFontSize(11); doc.setFont('helvetica', 'bold');
-        doc.text("CLIENTE:", 15, clienteY);
+        doc.text("CLIENTE:", 15, clienteYPosition);
         doc.setFont('helvetica', 'normal');
-        doc.text(this.cliente, clienteX, clienteY, { maxWidth: clienteMaxWidth });
+        doc.text(clienteTextLines, 40, clienteYPosition);
         doc.setFont('helvetica', 'bold');
-        doc.text("FECHA:", 140, clienteY);
+        doc.text("FECHA:", 140, clienteYPosition);
         doc.setFont('helvetica', 'normal');
-        doc.text(this.fecha, 160, clienteY);
+        doc.text(this.fecha, 160, clienteYPosition);
 
         const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
         const pageCount = (doc as any).internal.getNumberOfPages();
@@ -185,7 +190,6 @@ export class QuoteCreator {
         if (!this.incluirIGV) {
           doc.text("* PRECIOS NO INCLUYEN IGV.", 15, footerY + 4);
         }
-
         footerY += 10;
         doc.setFontSize(9); doc.setFont('helvetica', 'bold');
         doc.text("Cuentas:", 15, footerY);
@@ -205,12 +209,10 @@ export class QuoteCreator {
     const finalY = (doc as any).lastAutoTable.finalY;
     const summaryX = 130;
     doc.setFontSize(11); doc.setFont('helvetica', 'normal');
-
     if (this.incluirIGV) {
       doc.text("Subtotal:", summaryX, finalY + 10); doc.text(this.formatCurrency(this.subtotal), 195, finalY + 10, { align: 'right' });
       doc.text("IGV (18%):", summaryX, finalY + 17); doc.text(this.formatCurrency(this.igv), 195, finalY + 17, { align: 'right' });
     }
-
     doc.setFontSize(14); doc.setFont('helvetica', 'bold');
     const totalLabel = this.incluirIGV ? "TOTAL:" : "TOTAL SIN IGV:";
     const totalY = this.incluirIGV ? finalY + 25 : finalY + 10;
