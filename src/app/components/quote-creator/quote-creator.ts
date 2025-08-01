@@ -103,7 +103,6 @@ export class QuoteCreator {
     return formatter.format(value || 0).replace('PEN', 'S/ ');
   }
 
-  // MÉTODO CONVERTIDO A ASYNC PARA LA FUNCIÓN DE COMPARTIR
   async generarPDF(): Promise<void> {
     if (!this.cliente.trim()) {
       this.toastService.show('Error: Por favor, ingresa el nombre del cliente.', { classname: 'bg-danger text-light', delay: 5000 });
@@ -138,27 +137,26 @@ export class QuoteCreator {
         doc.text('ELECTROFERRETERO "W&M"', leftMargin, 15);
         doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(primaryColor);
         doc.text('DE: MARIA LUZ MITMA TORRES', leftMargin, 20);
-        let currentY = 25;
-        const servicesText = 'ALQUILER DE MAQUINARIA, VENTA DE AGREGADOS DE CONSTRUCCIÓN, CARPINTERÍA, PREFABRICADOS, MATERIALES ELÉCTRICOS Y SERVICIOS GENERALES PARA: PROYECTOS CIVILES, ELECTROMECÁNICOS, CARPINTERÍA Y SERVICIOS EN GENERAL, INSTALACIONES ELÉCTRICAS EN MEDIA Y BAJA TENSIÓN, EN PLANTAS MINERAS, EN LOCALES COMERCIALES E INDUSTRIALES, COMUNICACIONES, ILUMINACIÓN DE CAMPOS DEPORTIVOS, INSTALACIÓN DE TABLEROS ELÉCTRICOS DOMÉSTICOS E INDUSTRIALES';
-        doc.setFontSize(7); doc.setTextColor(secondaryColor);
-        doc.text(servicesText, leftMargin, currentY, { maxWidth: 110, lineHeightFactor: 1.4 });
+
         doc.setFontSize(20); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
         doc.text('COTIZACIÓN', rightMargin, 20, { align: 'right' });
         doc.setFontSize(11); doc.setFont('helvetica', 'normal'); doc.setTextColor(secondaryColor);
         doc.text(this.numeroCotizacion, rightMargin, 27, { align: 'right' });
         doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
         doc.text('R.U.C. Nº 10215770635', rightMargin, 34, { align: 'right' });
+
         doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
-        doc.text('CALLE LOS SAUCES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 15, 48);
+        doc.text('CALLE LOS SAUCES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 105, 48, { align: 'center' });
+
         doc.line(15, 55, 195, 55);
         doc.setFontSize(11); doc.setFont('helvetica', 'bold');
-        doc.text("CLIENTE:", 15, 60);
+        doc.text("CLIENTE:", 15, 62);
         doc.setFont('helvetica', 'normal');
-        doc.text(this.cliente, 40, 60);
+        doc.text(this.cliente, 40, 62);
         doc.setFont('helvetica', 'bold');
-        doc.text("FECHA:", 140, 60);
+        doc.text("FECHA:", 140, 62);
         doc.setFont('helvetica', 'normal');
-        doc.text(this.fecha, 160, 60);
+        doc.text(this.fecha, 160, 62);
 
         // --- PIE DE PÁGINA COMPLETO ---
         const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
@@ -193,12 +191,13 @@ export class QuoteCreator {
     doc.setFontSize(14); doc.setFont('helvetica', 'bold');
     doc.text("TOTAL:", summaryX, finalY + 25); doc.text(this.formatCurrency(this.total), 195, finalY + 25, { align: 'right' });
 
-    // --- LÓGICA AGREGADA PARA COMPARTIR EN MÓVIL ---
     const pdfBlob = doc.output('blob');
     const fileName = `Cotizacion-${this.numeroCotizacion}.pdf`;
     const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
-    if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
+    const isMobile = /Mobi/i.test(window.navigator.userAgent);
+
+    if (isMobile && navigator.share && navigator.canShare({ files: [pdfFile] })) {
       try {
         await navigator.share({
           title: `Cotización ${this.numeroCotizacion}`,
