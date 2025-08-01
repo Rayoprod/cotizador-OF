@@ -150,15 +150,15 @@ export class QuoteCreator {
         doc.text('R.U.C. Nº 10215770635', rightMargin, 34, { align: 'right' });
         doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
         doc.text('CALLE LOS SAUDES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 15, 48);
-        doc.line(15, 55, 195, 68);
+        doc.line(15, 55, 195, 55);
         doc.setFontSize(11); doc.setFont('helvetica', 'bold');
-        doc.text("CLIENTE:", 15, 75);
+        doc.text("CLIENTE:", 15, 60);
         doc.setFont('helvetica', 'normal');
-        doc.text(this.cliente, 40, 75);
+        doc.text(this.cliente, 40, 60);
         doc.setFont('helvetica', 'bold');
-        doc.text("FECHA:", 140, 75);
+        doc.text("FECHA:", 140, 60);
         doc.setFont('helvetica', 'normal');
-        doc.text(this.fecha, 160, 75);
+        doc.text(this.fecha, 160, 60);
 
         // --- PIE DE PÁGINA COMPLETO ---
         const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
