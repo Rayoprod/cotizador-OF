@@ -149,7 +149,7 @@ export class QuoteCreator {
         doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
         doc.text('R.U.C. Nº 10215770635', rightMargin, 34, { align: 'right' });
         doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
-        doc.text('CALLE LOS SAUDES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 105, 55, { align: 'center' });
+        doc.text('CALLE LOS SAUDES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 15, 48);
         doc.line(15, 68, 195, 68);
         doc.setFontSize(11); doc.setFont('helvetica', 'bold');
         doc.text("CLIENTE:", 15, 75);
