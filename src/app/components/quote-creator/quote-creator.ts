@@ -7,6 +7,7 @@ import { debounceTime, distinctUntilChanged, map } from 'rxjs/operators';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { ToastService } from '../../services/toast';
+import { SupabaseService } from '../../services/supabase';
 
 export interface QuoteItem {
   id: number;
@@ -35,8 +36,8 @@ export class QuoteCreator {
   items: QuoteItem[] = [];
   private nextId = 1;
   toastService = inject(ToastService);
+  supabaseService = inject(SupabaseService);
 
-  // --- VARIABLES PARA LOS CHECKS ---
   incluirIGV: boolean = true;
   entregaEnObra: boolean = false;
 
@@ -122,6 +123,24 @@ export class QuoteCreator {
       return;
     }
 
+    const cotizacionParaGuardar = {
+      numero_cotizacion: this.numeroCotizacion,
+      cliente: this.cliente,
+      fecha: this.fecha,
+      items: this.items,
+      total: this.total
+    };
+
+    const { error } = await this.supabaseService.supabase
+      .from('cotizaciones')
+      .insert([cotizacionParaGuardar]);
+
+    if (error) {
+      this.toastService.show('Error: No se pudo guardar la cotización en la base de datos.', { classname: 'bg-danger text-light', delay: 5000 });
+      console.error('Error al guardar en Supabase:', error);
+      return;
+    }
+
     const doc = new jsPDF();
     const head = [['#', 'Descripción', 'Unidad', 'Cant.', 'P. Unit.', 'Total']];
     const body = this.items.map((item, index) => [
@@ -143,7 +162,6 @@ export class QuoteCreator {
       theme: 'grid',
       headStyles: { fillColor: [233, 236, 239], textColor: [33, 37, 41] },
       didDrawPage: (data: any) => {
-        // --- ENCABEZADO COMPLETO ---
         const leftMargin = 15;
         const rightMargin = 195;
         const primaryColor = '#212529';
@@ -174,7 +192,6 @@ export class QuoteCreator {
         doc.setFont('helvetica', 'normal');
         doc.text(this.fecha, 160, clienteYPosition);
 
-        // --- PIE DE PÁGINA COMPLETO Y CONDICIONAL ---
         const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
         const pageCount = (doc as any).internal.getNumberOfPages();
         let footerY = pageHeight - 55;
@@ -229,13 +246,13 @@ export class QuoteCreator {
           title: `Cotización ${this.numeroCotizacion}`,
           files: [pdfFile],
         });
-        this.toastService.show('¡Cotización compartida!', { classname: 'bg-success text-light' });
+        this.toastService.show('Cotización guardada y compartida!', { classname: 'bg-success text-light' });
       } catch (error) {
         this.toastService.show('Se canceló la acción de compartir.', { classname: 'bg-info text-light' });
       }
     } else {
       doc.save(fileName);
-      this.toastService.show('PDF descargado con éxito.', { classname: 'bg-success text-light' });
+      this.toastService.show('PDF generado y cotización guardada.', { classname: 'bg-success text-light' });
     }
   }
 }
