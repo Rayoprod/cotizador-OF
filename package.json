@@ -28,6 +28,7 @@
     "@angular/router": "^20.1.0",
     "@ng-bootstrap/ng-bootstrap": "^19.0.1",
     "@popperjs/core": "^2.11.8",
+    "@supabase/supabase-js": "^2.53.0",
     "bootstrap": "^5.3.6",
     "jspdf": "^3.0.1",
     "jspdf-autotable": "^5.0.2",

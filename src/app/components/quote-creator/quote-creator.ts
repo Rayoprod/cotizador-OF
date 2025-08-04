@@ -6,7 +6,7 @@ import { Observable, OperatorFunction } from 'rxjs';
 import { debounceTime, distinctUntilChanged, map } from 'rxjs/operators';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { ToastService } from '../../services/toast'; // <-- RUTA CORREGIDA
+import { ToastService } from '../../services/toast';
 
 export interface QuoteItem {
   id: number;
@@ -36,7 +36,7 @@ export class QuoteCreator {
   private nextId = 1;
   toastService = inject(ToastService);
 
-  // --- NUEVAS VARIABLES PARA LOS CHECKS ---
+  // --- VARIABLES PARA LOS CHECKS ---
   incluirIGV: boolean = true;
   entregaEnObra: boolean = false;
 
@@ -132,8 +132,6 @@ export class QuoteCreator {
 
     const clienteYPosition = 62;
     const clienteMaxWidth = 95;
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
     const clienteTextLines = doc.splitTextToSize(this.cliente, clienteMaxWidth);
     const clienteTextHeight = clienteTextLines.length * 5;
     const tableStartY = clienteYPosition + clienteTextHeight + 8;
@@ -145,6 +143,7 @@ export class QuoteCreator {
       theme: 'grid',
       headStyles: { fillColor: [233, 236, 239], textColor: [33, 37, 41] },
       didDrawPage: (data: any) => {
+        // --- ENCABEZADO COMPLETO ---
         const leftMargin = 15;
         const rightMargin = 195;
         const primaryColor = '#212529';
@@ -175,6 +174,7 @@ export class QuoteCreator {
         doc.setFont('helvetica', 'normal');
         doc.text(this.fecha, 160, clienteYPosition);
 
+        // --- PIE DE PÁGINA COMPLETO Y CONDICIONAL ---
         const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
         const pageCount = (doc as any).internal.getNumberOfPages();
         let footerY = pageHeight - 55;
