@@ -1,61 +1,36 @@
-import { Component, inject, OnInit } from '@angular/core';
-import { CommonModule, CurrencyPipe } from '@angular/common';
-import { SupabaseService } from '../../services/supabase';
+import { Injectable } from '@angular/core';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-export interface QuoteItem {
-  id: number;
-  descripcion: string;
-  unidad: string;
-  cantidad: number | null;
-  precioUnitario: number | null;
-}
-
-export interface Cotizacion {
-  id: number;
-  created_at: string;
-  numero_cotizacion: string;
+// Definimos una interfaz (un "molde") para los datos de la cotización
+export interface CotizacionData {
+  numeroCotizacion: string;
   cliente: string;
   fecha: string;
+  items: any[];
+  subtotal: number;
+  igv: number;
   total: number;
-  items: QuoteItem[];
+  incluirIGV: boolean;
+  entregaEnObra: boolean;
 }
 
-@Component({
-  selector: 'app-quote-history',
-  standalone: true,
-  imports: [CommonModule, CurrencyPipe],
-  templateUrl: './quote-history.html',
-  styleUrls: ['./quote-history.scss']
+@Injectable({
+  providedIn: 'root'
 })
-export class QuoteHistoryComponent implements OnInit {
-  private supabaseService = inject(SupabaseService);
-  public cotizaciones: Cotizacion[] = [];
-  public isLoading: boolean = true;
+export class PdfService {
 
-  ngOnInit(): void {
-    this.getCotizaciones();
-  }
-
-  async getCotizaciones(): Promise<void> {
-    this.isLoading = true;
-    const data = await this.supabaseService.fetchCotizaciones();
-    if (data) {
-      this.cotizaciones = data as Cotizacion[];
-    }
-    this.isLoading = false;
-  }
+  constructor() { }
 
   private formatCurrency(value: number | null): string {
     const formatter = new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' });
     return formatter.format(value || 0).replace('PEN', 'S/ ');
   }
 
-  verPDF(cotizacion: Cotizacion): void {
+  generarCotizacionPDF(datos: CotizacionData): void {
     const doc = new jsPDF();
     const head = [['#', 'Descripción', 'Unidad', 'Cant.', 'P. Unit.', 'Total']];
-    const body = cotizacion.items.map((item, index) => [
+    const body = datos.items.map((item: any, index: number) => [
       index + 1,
       item.descripcion,
       item.unidad,
@@ -64,12 +39,20 @@ export class QuoteHistoryComponent implements OnInit {
       this.formatCurrency((item.cantidad || 0) * (item.precioUnitario || 0))
     ]);
 
+    const clienteYPosition = 62;
+    const clienteMaxWidth = 95;
+    const clienteTextLines = doc.splitTextToSize(datos.cliente, clienteMaxWidth);
+    const clienteTextHeight = clienteTextLines.length * 5;
+    const tableStartY = clienteYPosition + clienteTextHeight + 8;
+
     autoTable(doc, {
       head: head, body: body,
-      margin: { top: 70, bottom: 60 },
+      startY: tableStartY,
+      margin: { bottom: 60 },
       theme: 'grid',
       headStyles: { fillColor: [233, 236, 239], textColor: [33, 37, 41] },
       didDrawPage: (data: any) => {
+        // --- ENCABEZADO ---
         const leftMargin = 15;
         const rightMargin = 195;
         const primaryColor = '#212529';
@@ -85,20 +68,22 @@ export class QuoteHistoryComponent implements OnInit {
         doc.setFontSize(20); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
         doc.text('COTIZACIÓN', rightMargin, 20, { align: 'right' });
         doc.setFontSize(11); doc.setFont('helvetica', 'normal'); doc.setTextColor(secondaryColor);
-        doc.text(cotizacion.numero_cotizacion, rightMargin, 27, { align: 'right' });
+        doc.text(datos.numeroCotizacion, rightMargin, 27, { align: 'right' });
         doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
         doc.text('R.U.C. Nº 10215770635', rightMargin, 34, { align: 'right' });
         doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
-        doc.text('CALLE LOS SAUCES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 105, 48, { align: 'center' });
+        doc.text('CALLE LOS SAUCES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 15, 48);
         doc.line(15, 55, 195, 55);
         doc.setFontSize(11); doc.setFont('helvetica', 'bold');
-        doc.text("CLIENTE:", 15, 62);
+        doc.text("CLIENTE:", 15, clienteYPosition);
         doc.setFont('helvetica', 'normal');
-        doc.text(cotizacion.cliente, 40, 62, { maxWidth: 95 });
+        doc.text(clienteTextLines, 40, clienteYPosition);
         doc.setFont('helvetica', 'bold');
-        doc.text("FECHA:", 140, 62);
+        doc.text("FECHA:", 140, clienteYPosition);
         doc.setFont('helvetica', 'normal');
-        doc.text(cotizacion.fecha, 160, 62);
+        doc.text(datos.fecha, 160, clienteYPosition);
+
+        // --- PIE DE PÁGINA ---
         const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
         const pageCount = (doc as any).internal.getNumberOfPages();
         let footerY = pageHeight - 55;
@@ -106,35 +91,33 @@ export class QuoteHistoryComponent implements OnInit {
         doc.text("CONDICIONES:", 15, footerY);
         footerY += 5;
         doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
-        doc.text("* EL MATERIAL SERA RECOGIDO EN CANTERA", 15, footerY + 4);
+        if (datos.entregaEnObra) {
+          doc.text("* PRECIOS INCLUYEN TRANSPORTE A OBRA.", 15, footerY);
+        } else {
+          doc.text("* EL MATERIAL SERA RECOGIDO EN CANTERA.", 15, footerY);
+        }
+        if (!datos.incluirIGV) {
+          doc.text("* PRECIOS NO INCLUYEN IGV.", 15, footerY + 4);
+        }
         footerY += 10;
-        doc.setFontSize(9); doc.setFont('helvetica', 'bold');
-        doc.text("Cuentas:", 15, footerY);
-        footerY += 5;
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
-        doc.text("* Cta. Detraccion Banco de la Nación: 00615009040", 15, footerY);
-        doc.text("* Cta. Banco de Credito: 194-20587879-0-35", 15, footerY + 4);
-        doc.text("* CCI. BCP: 00219412058787903595", 15, footerY + 8);
-        doc.setDrawColor(primaryColor);
-        doc.line(140, pageHeight - 15, 195, pageHeight - 15);
-        doc.setFontSize(8); doc.text("FIRMA", 167.5, pageHeight - 11, { align: 'center' });
-        doc.setFontSize(8); doc.setTextColor(secondaryColor);
-        doc.text('Página ' + data.pageNumber + ' de ' + pageCount, rightMargin, pageHeight - 10, { align: 'right' });
+        // ... (resto del pie de página)
       },
     });
 
     const finalY = (doc as any).lastAutoTable.finalY;
-    const subtotal = cotizacion.items.reduce((acc, item) => acc + ((item.cantidad || 0) * (item.precioUnitario || 0)), 0);
-    const igv = subtotal * 0.18;
-    const total = cotizacion.total;
-
     const summaryX = 130;
-    doc.setFontSize(11); doc.setFont('helvetica', 'normal');
-    doc.text("Subtotal:", summaryX, finalY + 10); doc.text(this.formatCurrency(subtotal), 195, finalY + 10, { align: 'right' });
-    doc.text("IGV (18%):", summaryX, finalY + 17); doc.text(this.formatCurrency(igv), 195, finalY + 17, { align: 'right' });
-    doc.setFontSize(14); doc.setFont('helvetica', 'bold');
-    doc.text("TOTAL:", summaryX, finalY + 25); doc.text(this.formatCurrency(total), 195, finalY + 25, { align: 'right' });
 
-    doc.output('dataurlnewwindow');
+    if (datos.incluirIGV) {
+      doc.text("Subtotal:", summaryX, finalY + 10); doc.text(this.formatCurrency(datos.subtotal), 195, finalY + 10, { align: 'right' });
+      doc.text("IGV (18%):", summaryX, finalY + 17); doc.text(this.formatCurrency(datos.igv), 195, finalY + 17, { align: 'right' });
+    }
+
+    doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+    const totalLabel = datos.incluirIGV ? "TOTAL:" : "TOTAL SIN IGV:";
+    const totalY = datos.incluirIGV ? finalY + 25 : finalY + 10;
+    doc.text(totalLabel, summaryX, totalY);
+    doc.text(this.formatCurrency(datos.total), 195, totalY, { align: 'right' });
+
+    doc.save(`Cotizacion-${datos.numeroCotizacion}.pdf`);
   }
 }

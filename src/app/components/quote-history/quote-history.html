@@ -1,14 +1,19 @@
 <div class="container my-4">
-  <h2 class="mb-3">Historial de Cotizaciones</h2>
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Historial de Cotizaciones</h2>
+    <button class="btn btn-light" (click)="getCotizaciones()">
+      &#x21bb; Refrescar
+    </button>
+  </div>
 
-  <div *ngIf="isLoading" class="text-center">
+  <div *ngIf="isLoading" class="text-center p-5">
     <div class="spinner-border text-primary" role="status">
       <span class="visually-hidden">Cargando...</span>
     </div>
   </div>
 
   <div *ngIf="!isLoading && cotizaciones.length === 0" class="alert alert-info">
-    Aún no has guardado ninguna cotización.
+    Aún no has guardado ninguna cotización en la base de datos.
   </div>
 
   <div *ngIf="!isLoading && cotizaciones.length > 0" class="table-responsive">
@@ -30,8 +35,8 @@
           <td class="text-end">{{ cot.total | currency:'S/ ' }}</td>
           <td class="text-center">
             <button class="btn btn-sm btn-outline-primary" (click)="verPDF(cot)">
-  Ver PDF
-</button>
+              Ver PDF
+            </button>
           </td>
         </tr>
       </tbody>
