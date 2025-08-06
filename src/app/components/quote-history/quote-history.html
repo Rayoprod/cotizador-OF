@@ -29,9 +29,9 @@
           <td>{{ cot.fecha }}</td>
           <td class="text-end">{{ cot.total | currency:'S/ ' }}</td>
           <td class="text-center">
-            <button class="btn btn-sm btn-outline-primary">
-              Ver PDF
-            </button>
+            <button class="btn btn-sm btn-outline-primary" (click)="verPDF(cot)">
+  Ver PDF
+</button>
           </td>
         </tr>
       </tbody>
