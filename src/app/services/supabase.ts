@@ -15,4 +15,19 @@ export class SupabaseService {
       environment.supabaseKey
     );
   }
+  // --- NUEVA FUNCIÓN ---
+  async fetchCotizaciones() {
+    const { data, error } = await this.supabase
+      .from('cotizaciones')
+      .select('*')
+      .order('created_at', { ascending: false }); // Ordena por fecha de creación, la más nueva primero
+
+    if (error) {
+      console.error('Error al obtener cotizaciones:', error);
+      return [];
+    }
+
+    return data;
+  }
 }
+

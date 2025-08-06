@@ -1,2 +1,13 @@
-<router-outlet></router-outlet>
-<app-toasts></app-toasts>
+<div class="container-fluid">
+  <ul class="nav nav-tabs my-3">
+    <li class="nav-item">
+      <a class="nav-link" routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">Crear Cotización</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" routerLink="/historial" routerLinkActive="active">Historial</a>
+    </li>
+  </ul>
+
+  <router-outlet></router-outlet>
+  <app-toasts></app-toasts>
+</div>
