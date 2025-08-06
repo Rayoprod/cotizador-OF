@@ -1,0 +1,4 @@
+/* Opcional: para que las filas de la tabla tengan un cursor de mano, indicando que son clickeables en el futuro */
+tbody tr:hover {
+  cursor: pointer;
+}
