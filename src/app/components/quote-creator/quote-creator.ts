@@ -123,6 +123,9 @@ export class QuoteCreator {
       return;
     }
 
+    // --- GUARDAMOS EN BASE DE DATOS ---
+    this.toastService.show('Guardando cotización...', { classname: 'bg-info text-light', delay: 2000 });
+
     const cotizacionParaGuardar = {
       numero_cotizacion: this.numeroCotizacion,
       cliente: this.cliente,
@@ -131,15 +134,18 @@ export class QuoteCreator {
       total: this.total
     };
 
-    const { error } = await this.supabaseService.supabase
+    const { data, error } = await this.supabaseService.supabase
       .from('cotizaciones')
       .insert([cotizacionParaGuardar]);
 
     if (error) {
-      this.toastService.show('Error: No se pudo guardar la cotización en la base de datos.', { classname: 'bg-danger text-light', delay: 5000 });
-      console.error('Error al guardar en Supabase:', error);
+      this.toastService.show('Error: No se pudo guardar. Revisa la consola.', { classname: 'bg-danger text-light', delay: 7000 });
+      console.error('Error detallado de Supabase:', error);
       return;
     }
+
+    this.toastService.show('¡Guardado en la nube con éxito!', { classname: 'bg-success text-light', delay: 3000 });
+
 
     const doc = new jsPDF();
     const head = [['#', 'Descripción', 'Unidad', 'Cant.', 'P. Unit.', 'Total']];
