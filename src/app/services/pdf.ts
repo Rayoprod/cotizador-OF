@@ -52,7 +52,6 @@ export class PdfService {
       theme: 'grid',
       headStyles: { fillColor: [233, 236, 239], textColor: [33, 37, 41] },
       didDrawPage: (data: any) => {
-        // --- ENCABEZADO ---
         const leftMargin = 15;
         const rightMargin = 195;
         const primaryColor = '#212529';
@@ -83,7 +82,6 @@ export class PdfService {
         doc.setFont('helvetica', 'normal');
         doc.text(datos.fecha, 160, clienteYPosition);
 
-        // --- PIE DE PÁGINA ---
         const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
         const pageCount = (doc as any).internal.getNumberOfPages();
         let footerY = pageHeight - 55;
@@ -100,7 +98,18 @@ export class PdfService {
           doc.text("* PRECIOS NO INCLUYEN IGV.", 15, footerY + 4);
         }
         footerY += 10;
-        // ... (resto del pie de página)
+        doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+        doc.text("Cuentas:", 15, footerY);
+        footerY += 5;
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+        doc.text("* Cta. Detraccion Banco de la Nación: 00615009040", 15, footerY);
+        doc.text("* Cta. Banco de Credito: 194-20587879-0-35", 15, footerY + 4);
+        doc.text("* CCI. BCP: 00219412058787903595", 15, footerY + 8);
+        doc.setDrawColor(primaryColor);
+        doc.line(140, pageHeight - 15, 195, pageHeight - 15);
+        doc.setFontSize(8); doc.text("FIRMA", 167.5, pageHeight - 11, { align: 'center' });
+        doc.setFontSize(8); doc.setTextColor(secondaryColor);
+        doc.text('Página ' + data.pageNumber + ' de ' + pageCount, rightMargin, pageHeight - 10, { align: 'right' });
       },
     });
 
@@ -118,6 +127,6 @@ export class PdfService {
     doc.text(totalLabel, summaryX, totalY);
     doc.text(this.formatCurrency(datos.total), 195, totalY, { align: 'right' });
 
-    doc.save(`Cotizacion-${datos.numeroCotizacion}.pdf`);
+    doc.output('dataurlnewwindow');
   }
 }

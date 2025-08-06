@@ -1,8 +1,7 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { SupabaseService } from '../../services/supabase';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { PdfService, CotizacionData } from '../../services/pdf';
 
 export interface QuoteItem {
   id: number;
@@ -31,6 +30,7 @@ export interface Cotizacion {
 })
 export class QuoteHistoryComponent implements OnInit {
   private supabaseService = inject(SupabaseService);
+  private pdfService = inject(PdfService);
   public cotizaciones: Cotizacion[] = [];
   public isLoading: boolean = true;
 
@@ -47,94 +47,24 @@ export class QuoteHistoryComponent implements OnInit {
     this.isLoading = false;
   }
 
-  private formatCurrency(value: number | null): string {
-    const formatter = new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' });
-    return formatter.format(value || 0).replace('PEN', 'S/ ');
-  }
-
   verPDF(cotizacion: Cotizacion): void {
-    const doc = new jsPDF();
-    const head = [['#', 'Descripción', 'Unidad', 'Cant.', 'P. Unit.', 'Total']];
-    const body = cotizacion.items.map((item, index) => [
-      index + 1,
-      item.descripcion,
-      item.unidad,
-      item.cantidad,
-      this.formatCurrency(item.precioUnitario),
-      this.formatCurrency((item.cantidad || 0) * (item.precioUnitario || 0))
-    ]);
-
-    autoTable(doc, {
-      head: head, body: body,
-      margin: { top: 70, bottom: 60 },
-      theme: 'grid',
-      headStyles: { fillColor: [233, 236, 239], textColor: [33, 37, 41] },
-      didDrawPage: (data: any) => {
-        const leftMargin = 15;
-        const rightMargin = 195;
-        const primaryColor = '#212529';
-        const secondaryColor = '#6c757d';
-        doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
-        doc.text('ELECTROFERRETERO "W&M"', leftMargin, 15);
-        doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(primaryColor);
-        doc.text('DE: MARIA LUZ MITMA TORRES', leftMargin, 20);
-        let currentY = 25;
-        const servicesText = 'ALQUILER DE MAQUINARIA, VENTA DE AGREGADOS DE CONSTRUCCIÓN, CARPINTERÍA, PREFABRICADOS, MATERIALES ELÉCTRICOS Y SERVICIOS GENERALES PARA: PROYECTOS CIVILES, ELECTROMECÁNICOS, CARPINTERÍA Y SERVICIOS EN GENERAL, INSTALACIONES ELÉCTRICAS EN MEDIA Y BAJA TENSIÓN, EN PLANTAS MINERAS, EN LOCALES COMERCIALES E INDUSTRIALES, COMUNICACIONES, ILUMINACIÓN DE CAMPOS DEPORTIVOS, INSTALACIÓN DE TABLEROS ELÉCTRICOS DOMÉSTICOS E INDUSTRIALES';
-        doc.setFontSize(7); doc.setTextColor(secondaryColor);
-        doc.text(servicesText, leftMargin, currentY, { maxWidth: 110, lineHeightFactor: 1.4 });
-        doc.setFontSize(20); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
-        doc.text('COTIZACIÓN', rightMargin, 20, { align: 'right' });
-        doc.setFontSize(11); doc.setFont('helvetica', 'normal'); doc.setTextColor(secondaryColor);
-        doc.text(cotizacion.numero_cotizacion, rightMargin, 27, { align: 'right' });
-        doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
-        doc.text('R.U.C. Nº 10215770635', rightMargin, 34, { align: 'right' });
-        doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
-        doc.text('CALLE LOS SAUCES Mz. 38 LT. 12 - CHALA - CARAVELI - AREQUIPA', 105, 48, { align: 'center' });
-        doc.line(15, 55, 195, 55);
-        doc.setFontSize(11); doc.setFont('helvetica', 'bold');
-        doc.text("CLIENTE:", 15, 62);
-        doc.setFont('helvetica', 'normal');
-        doc.text(cotizacion.cliente, 40, 62, { maxWidth: 95 });
-        doc.setFont('helvetica', 'bold');
-        doc.text("FECHA:", 140, 62);
-        doc.setFont('helvetica', 'normal');
-        doc.text(cotizacion.fecha, 160, 62);
-        const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
-        const pageCount = (doc as any).internal.getNumberOfPages();
-        let footerY = pageHeight - 55;
-        doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
-        doc.text("CONDICIONES:", 15, footerY);
-        footerY += 5;
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
-        doc.text("* EL MATERIAL SERA RECOGIDO EN CANTERA", 15, footerY + 4);
-        footerY += 10;
-        doc.setFontSize(9); doc.setFont('helvetica', 'bold');
-        doc.text("Cuentas:", 15, footerY);
-        footerY += 5;
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
-        doc.text("* Cta. Detraccion Banco de la Nación: 00615009040", 15, footerY);
-        doc.text("* Cta. Banco de Credito: 194-20587879-0-35", 15, footerY + 4);
-        doc.text("* CCI. BCP: 00219412058787903595", 15, footerY + 8);
-        doc.setDrawColor(primaryColor);
-        doc.line(140, pageHeight - 15, 195, pageHeight - 15);
-        doc.setFontSize(8); doc.text("FIRMA", 167.5, pageHeight - 11, { align: 'center' });
-        doc.setFontSize(8); doc.setTextColor(secondaryColor);
-        doc.text('Página ' + data.pageNumber + ' de ' + pageCount, rightMargin, pageHeight - 10, { align: 'right' });
-      },
-    });
-
-    const finalY = (doc as any).lastAutoTable.finalY;
     const subtotal = cotizacion.items.reduce((acc, item) => acc + ((item.cantidad || 0) * (item.precioUnitario || 0)), 0);
-    const igv = subtotal * 0.18;
-    const total = cotizacion.total;
+    // Asumimos que si el total es mayor que el subtotal, entonces tenía IGV.
+    const incluirIGV = cotizacion.total > subtotal;
+    const igv = incluirIGV ? subtotal * 0.18 : 0;
 
-    const summaryX = 130;
-    doc.setFontSize(11); doc.setFont('helvetica', 'normal');
-    doc.text("Subtotal:", summaryX, finalY + 10); doc.text(this.formatCurrency(subtotal), 195, finalY + 10, { align: 'right' });
-    doc.text("IGV (18%):", summaryX, finalY + 17); doc.text(this.formatCurrency(igv), 195, finalY + 17, { align: 'right' });
-    doc.setFontSize(14); doc.setFont('helvetica', 'bold');
-    doc.text("TOTAL:", summaryX, finalY + 25); doc.text(this.formatCurrency(total), 195, finalY + 25, { align: 'right' });
+    const datosParaPDF: CotizacionData = {
+      numeroCotizacion: cotizacion.numero_cotizacion,
+      cliente: cotizacion.cliente,
+      fecha: cotizacion.fecha,
+      items: cotizacion.items,
+      subtotal: subtotal,
+      igv: igv,
+      total: cotizacion.total,
+      incluirIGV: incluirIGV,
+      entregaEnObra: false // Asumimos un valor por defecto al reimprimir, esto podría mejorarse en el futuro.
+    };
 
-    doc.output('dataurlnewwindow');
+    this.pdfService.generarCotizacionPDF(datosParaPDF);
   }
 }
