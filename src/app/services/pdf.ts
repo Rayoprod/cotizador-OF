@@ -101,19 +101,38 @@ export class PdfService {
       },
     });
 
-    const finalY = (doc as any).lastAutoTable.finalY;
-    const summaryX = 130;
+     const finalY = (doc as any).lastAutoTable.finalY;
+    const summaryStartY = finalY + 8;  // Un poco de espacio después de la tabla
+    const summaryLabelX = 140;         // Posición X para etiquetas (Subtotal, IGV, Total)
+    const summaryValueX = 195;         // Posición X para los montos (alineados a la derecha)
+    const lineHeight = 6;              // Espacio vertical entre líneas
+    let currentY = summaryStartY;
 
+    // Usamos un tamaño de fuente más pequeño y uniforme
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+
+    // Dibuja Subtotal e IGV si es necesario
     if (datos.incluirIGV) {
-      doc.text("Subtotal:", summaryX, finalY + 10); doc.text(this.formatCurrency(datos.subtotal), 195, finalY + 10, { align: 'right' });
-      doc.text("IGV (18%):", summaryX, finalY + 17); doc.text(this.formatCurrency(datos.igv), 195, finalY + 17, { align: 'right' });
+      doc.text("Subtotal:", summaryLabelX, currentY);
+      doc.text(this.formatCurrency(datos.subtotal), summaryValueX, currentY, { align: 'right' });
+      currentY += lineHeight;
+
+      doc.text("IGV (18%):", summaryLabelX, currentY);
+      doc.text(this.formatCurrency(datos.igv), summaryValueX, currentY, { align: 'right' });
+      currentY += lineHeight;
+
+      // Línea separadora sutil para un look más limpio
+      doc.setDrawColor('#cccccc'); // Un gris claro
+      doc.line(summaryLabelX - 2, currentY - (lineHeight / 2), summaryValueX, currentY - (lineHeight / 2));
     }
 
-    doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+    // Total final en negrita para darle énfasis
+    doc.setFont('helvetica', 'bold');
     const totalLabel = datos.incluirIGV ? "TOTAL:" : "TOTAL SIN IGV:";
-    const totalY = datos.incluirIGV ? finalY + 25 : finalY + 10;
-    doc.text(totalLabel, summaryX, totalY);
-    doc.text(this.formatCurrency(datos.total), 195, totalY, { align: 'right' });
+    doc.text(totalLabel, summaryLabelX, currentY);
+    doc.text(this.formatCurrency(datos.total), summaryValueX, currentY, { align: 'right' });
+// --- FIN DEL NUEVO BLOQUE DE TOTALES ELEGANTE ---
 
     doc.output('dataurlnewwindow');
   }
