@@ -7,7 +7,7 @@ import { Observable, OperatorFunction } from 'rxjs';
 import { debounceTime, distinctUntilChanged, map } from 'rxjs/operators';
 import { ToastService } from '../../services/toast';
 import { SupabaseService } from '../../services/supabase';
-import { PdfService} from '../../services/pdf';
+import { PdfService } from '../../services/pdf';
 import { CotizacionData, QuoteItem } from '../../models/cotizacion.model';
 
 
@@ -23,37 +23,33 @@ import { CotizacionData, QuoteItem } from '../../models/cotizacion.model';
   templateUrl: './quote-creator.html',
   styleUrls: ['./quote-creator.scss']
 })
-export class QuoteCreator implements OnInit{
+export class QuoteCreator implements OnInit {
   numeroCotizacion: string = '';
   cliente: string = '';
-    selectedClientId: string | null = null; // <-- AÑADE ESTA PROPIEDAD
+  selectedClientId: string | null = null; // <-- AÑADE ESTA PROPIEDAD
 
   fecha: string = new Date().toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
   items: QuoteItem[] = [];
-clientes: any[] = [];
+  clientes: any[] = [];
   productos: any[] = [];
+  incluirIGV: boolean = true;
+  entregaEnObra: boolean = false;
   private nextId = 1;
+
+
+
   toastService = inject(ToastService);
   supabaseService = inject(SupabaseService);
   private pdfService = inject(PdfService);
 
-  incluirIGV: boolean = true;
-  entregaEnObra: boolean = false;
-
-  productosSugeridos: string[] = [
-    'Piedra chancada 1/2"',
-    'Piedra chancada 3/4"',
-    'Piedra chancada 1"',
-    'Arena gruesa',
-    'Arena fina',
-    'Hormigón',
-  ];
 
   constructor() {
     this.numeroCotizacion = this._generarNumeroCotizacion();
     this.addItem();
   }
-   async ngOnInit(): Promise<void> {
+
+
+  async ngOnInit(): Promise<void> {
     const [clientesData, productosData] = await Promise.all([
       this.supabaseService.fetchClientes(),
       this.supabaseService.fetchProductos()
@@ -67,14 +63,16 @@ clientes: any[] = [];
       productos: this.productos
     });
   }
-searchClientes: OperatorFunction<string, readonly any[]> = (text$: Observable<string>) =>
+
+
+  searchClientes: OperatorFunction<string, readonly any[]> = (text$: Observable<string>) =>
     text$.pipe(
       debounceTime(200),
       distinctUntilChanged(),
       map(term =>
         term.length < 2
-        ? []
-        : this.clientes.filter(c => {
+          ? []
+          : this.clientes.filter(c => {
             const fullName = `${c.nombres || ''} ${c.apellido_paterno || ''} ${c.apellido_materno || ''}`.toLowerCase();
             return fullName.includes(term.toLowerCase());
           }).slice(0, 10)
@@ -113,6 +111,10 @@ searchClientes: OperatorFunction<string, readonly any[]> = (text$: Observable<st
     });
   }
 
+  removeItem(id: number): void {
+    this.items = this.items.filter(item => item.id !== id);
+  }
+
   onProductSelect(event: NgbTypeaheadSelectItemEvent, item: QuoteItem): void {
     event.preventDefault();
     const productoSeleccionado = event.item;
@@ -134,10 +136,8 @@ searchClientes: OperatorFunction<string, readonly any[]> = (text$: Observable<st
     );
 
   productoFormatter = (producto: any): string => producto.descripcion;
-  
-  removeItem(id: number): void {
-    this.items = this.items.filter(item => item.id !== id);
-  }
+
+
 
   get subtotal(): number {
     return this.items.reduce((acc, item) => acc + ((item.cantidad || 0) * (item.precioUnitario || 0)), 0);
@@ -149,29 +149,66 @@ searchClientes: OperatorFunction<string, readonly any[]> = (text$: Observable<st
     return this.subtotal + this.igv;
   }
 
-  search: OperatorFunction<string, readonly string[]> = (text$: Observable<string>) =>
-    text$.pipe(
-      debounceTime(200),
-      distinctUntilChanged(),
-      map((term) =>
-        term.length < 1 ? [] : this.productosSugeridos.filter((v) => v.toLowerCase().indexOf(term.toLowerCase()) > -1).slice(0, 10),
-      ),
-    );
 
   async generarPDF(): Promise<void> {
-    if (!this.cliente.trim()) {
-        this.toastService.show('Error: Por favor, ingresa el nombre del cliente.', { classname: 'bg-danger text-light', delay: 5000 });
-        return;
-    }
-    const itemInvalido = this.items.find(item => !item.descripcion.trim() || (item.cantidad || 0) <= 0 || item.precioUnitario === null);
-    if (itemInvalido) {
-        this.toastService.show('Error: Revisa los items. Todos deben tener descripción, cantidad y precio.', { classname: 'bg-danger text-light', delay: 5000 });
-        return;
+  // --- 1. Validaciones ---
+  if (!this.selectedClientId) {
+    this.toastService.show('Error: Por favor, selecciona un cliente de la lista.', { classname: 'bg-danger text-light', delay: 5000 });
+    return;
+  }
+  const itemInvalido = this.items.find(item => !item.producto_id || (item.cantidad || 0) <= 0 || item.precioUnitario === null);
+  if (itemInvalido) {
+    this.toastService.show('Error: Revisa los items. Todos deben tener producto, cantidad y precio.', { classname: 'bg-danger text-light', delay: 5000 });
+    return;
+  }
+
+  try {
+    // --- 2. Guardar la Cotización Principal ---
+    const cotizacionPrincipal = {
+      numero_cotizacion: this.numeroCotizacion,
+      fecha: this.fecha,
+      cliente_id: this.selectedClientId, // Usamos el ID del cliente seleccionado
+      subtotal: this.subtotal,
+      igv: this.igv,
+      total: this.total,
+      incluir_igv: this.incluirIGV,
+      entrega_en_obra: this.entregaEnObra
+    };
+
+    // Insertamos y usamos .select() para que nos devuelva la fila insertada con su nuevo ID
+    const { data: cotizacionGuardada, error: errorCotizacion } = await this.supabaseService.supabase
+      .from('cotizaciones')
+      .insert(cotizacionPrincipal)
+      .select()
+      .single(); // .single() para obtener un objeto en lugar de un array
+
+    if (errorCotizacion) {
+      throw errorCotizacion; // Si hay un error, saltamos al bloque catch
     }
 
-    const datosCotizacion: CotizacionData = {
+    const nuevaCotizacionId = cotizacionGuardada.id;
+
+    // --- 3. Preparar y Guardar los Items de la Cotización ---
+    const itemsParaGuardar = this.items.map(item => ({
+      cotizacion_id: nuevaCotizacionId, // El ID que acabamos de obtener
+      producto_id: item.producto_id,
+      cantidad: item.cantidad,
+      precio_unitario_cotizado: item.precioUnitario,
+      total_linea: (item.cantidad || 0) * (item.precioUnitario || 0)
+    }));
+
+    const { error: errorItems } = await this.supabaseService.supabase
+      .from('cotizacion_items')
+      .insert(itemsParaGuardar);
+
+    if (errorItems) {
+      throw errorItems; // Si hay un error, saltamos al bloque catch
+    }
+
+    // --- 4. Generar el PDF (solo si todo lo anterior fue exitoso) ---
+    const datosParaPDF: CotizacionData = {
       numeroCotizacion: this.numeroCotizacion,
-      cliente: this.cliente,
+      cliente: this.cliente, // El nombre del cliente para el PDF
       fecha: this.fecha,
       items: this.items,
       subtotal: this.subtotal,
@@ -180,27 +217,12 @@ searchClientes: OperatorFunction<string, readonly any[]> = (text$: Observable<st
       incluirIGV: this.incluirIGV,
       entregaEnObra: this.entregaEnObra
     };
+    this.pdfService.generarCotizacionPDF(datosParaPDF);
+    this.toastService.show('PDF generado y cotización guardada exitosamente.', { classname: 'bg-success text-light' });
 
-    const { error } = await this.supabaseService.supabase.from('cotizaciones').insert([{
-  numero_cotizacion: datosCotizacion.numeroCotizacion,
-  cliente: datosCotizacion.cliente,
-  fecha: datosCotizacion.fecha,
-  items: datosCotizacion.items,
-  subtotal: datosCotizacion.subtotal,        // <-- AÑADIDO
-  igv: datosCotizacion.igv,                  // <-- AÑADIDO
-  total: datosCotizacion.total,
-  incluir_igv: datosCotizacion.incluirIGV,     // <-- AÑADIDO
-  entrega_en_obra: datosCotizacion.entregaEnObra // <-- AÑADIDO
-    }]);
-
-    if (error) {
-      this.toastService.show('Error: No se pudo guardar la cotización en la base de datos.', { classname: 'bg-danger text-light', delay: 5000 });
-      console.error('Error al guardar en Supabase:', error);
-      return;
-    }
-
-    this.pdfService.generarCotizacionPDF(datosCotizacion);
-
-    this.toastService.show('PDF generado y cotización guardada.', { classname: 'bg-success text-light' });
+  } catch (error: any) {
+    this.toastService.show('Error: No se pudo guardar la cotización.', { classname: 'bg-danger text-light', delay: 5000 });
+    console.error('Error al guardar en Supabase:', error.message);
   }
+}
 }
