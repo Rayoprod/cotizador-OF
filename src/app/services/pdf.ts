@@ -17,7 +17,7 @@ export class PdfService {
 
   generarCotizacionPDF(datos: CotizacionData): void {
     const doc = new jsPDF();
-    const head = [['#', 'Descripción', 'Unidad', 'Cant.', 'P. Unit.', 'Total']];
+    const head = [['N°', 'Descripción', 'Unidad', 'Cant.', 'P. Unit.', 'Total']];
     const body = datos.items.map((item: any, index: number) => [
       index + 1,
       item.descripcion,
@@ -101,38 +101,38 @@ export class PdfService {
       },
     });
 
-     const finalY = (doc as any).lastAutoTable.finalY;
-    const summaryStartY = finalY + 8;  // Un poco de espacio después de la tabla
-    const summaryLabelX = 140;         // Posición X para etiquetas (Subtotal, IGV, Total)
-    const summaryValueX = 195;         // Posición X para los montos (alineados a la derecha)
-    const lineHeight = 6;              // Espacio vertical entre líneas
+    const finalY = (doc as any).lastAutoTable.finalY;
+    const summaryStartY = finalY + 8;
+    const labelColumnX = 165; // Columna para etiquetas (alineadas a la derecha)
+    const valueColumnX = 195;  // Columna para montos (alineados a la derecha)
+    const lineHeight = 6;
     let currentY = summaryStartY;
 
-    // Usamos un tamaño de fuente más pequeño y uniforme
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
 
     // Dibuja Subtotal e IGV si es necesario
     if (datos.incluirIGV) {
-      doc.text("Subtotal:", summaryLabelX, currentY);
-      doc.text(this.formatCurrency(datos.subtotal), summaryValueX, currentY, { align: 'right' });
+      // Alinea la etiqueta a la derecha en su propia columna
+      doc.text("Subtotal:", labelColumnX, currentY, { align: 'right' });
+      doc.text(this.formatCurrency(datos.subtotal), valueColumnX, currentY, { align: 'right' });
       currentY += lineHeight;
 
-      doc.text("IGV (18%):", summaryLabelX, currentY);
-      doc.text(this.formatCurrency(datos.igv), summaryValueX, currentY, { align: 'right' });
+      doc.text("IGV (18%):", labelColumnX, currentY, { align: 'right' });
+      doc.text(this.formatCurrency(datos.igv), valueColumnX, currentY, { align: 'right' });
       currentY += lineHeight;
 
-      // Línea separadora sutil para un look más limpio
-      doc.setDrawColor('#cccccc'); // Un gris claro
-      doc.line(summaryLabelX - 2, currentY - (lineHeight / 2), summaryValueX, currentY - (lineHeight / 2));
+      doc.setDrawColor('#cccccc');
+      doc.line(labelColumnX - 25, currentY - (lineHeight / 2), valueColumnX, currentY - (lineHeight / 2));
     }
 
-    // Total final en negrita para darle énfasis
+    // Total final en negrita
     doc.setFont('helvetica', 'bold');
     const totalLabel = datos.incluirIGV ? "TOTAL:" : "TOTAL SIN IGV:";
-    doc.text(totalLabel, summaryLabelX, currentY);
-    doc.text(this.formatCurrency(datos.total), summaryValueX, currentY, { align: 'right' });
-// --- FIN DEL NUEVO BLOQUE DE TOTALES ELEGANTE ---
+    // Alinear la etiqueta a la derecha en su columna garantiza que no choque con el valor
+    doc.text(totalLabel, labelColumnX, currentY, { align: 'right' });
+    doc.text(this.formatCurrency(datos.total), valueColumnX, currentY, { align: 'right' });
+// --- FIN DEL NUEVO BLOQUE DE TOTALES A PRUEBA DE TODO ---
 
     doc.output('dataurlnewwindow');
   }
