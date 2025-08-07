@@ -1,4 +1,5 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
+
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NgbTypeaheadModule, NgbTypeaheadSelectItemEvent } from '@ng-bootstrap/ng-bootstrap';
@@ -22,11 +23,15 @@ import { CotizacionData, QuoteItem } from '../../models/cotizacion.model';
   templateUrl: './quote-creator.html',
   styleUrls: ['./quote-creator.scss']
 })
-export class QuoteCreator {
+export class QuoteCreator implements OnInit{
   numeroCotizacion: string = '';
   cliente: string = '';
+    selectedClientId: string | null = null; // <-- AÑADE ESTA PROPIEDAD
+
   fecha: string = new Date().toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
   items: QuoteItem[] = [];
+clientes: any[] = [];
+  productos: any[] = [];
   private nextId = 1;
   toastService = inject(ToastService);
   supabaseService = inject(SupabaseService);
@@ -48,6 +53,42 @@ export class QuoteCreator {
     this.numeroCotizacion = this._generarNumeroCotizacion();
     this.addItem();
   }
+   async ngOnInit(): Promise<void> {
+    const [clientesData, productosData] = await Promise.all([
+      this.supabaseService.fetchClientes(),
+      this.supabaseService.fetchProductos()
+    ]);
+
+    this.clientes = clientesData || [];
+    this.productos = productosData || [];
+
+    console.log('Datos cargados:', {
+      clientes: this.clientes,
+      productos: this.productos
+    });
+  }
+searchClientes: OperatorFunction<string, readonly any[]> = (text$: Observable<string>) =>
+    text$.pipe(
+      debounceTime(200),
+      distinctUntilChanged(),
+      map(term =>
+        term.length < 2
+        ? []
+        : this.clientes.filter(c => {
+            const fullName = `${c.nombres || ''} ${c.apellido_paterno || ''} ${c.apellido_materno || ''}`.toLowerCase();
+            return fullName.includes(term.toLowerCase());
+          }).slice(0, 10)
+      )
+    );
+
+  clienteFormatter = (cliente: any): string => `${cliente.nombres} ${cliente.apellido_paterno}`;
+
+  seleccionarCliente(evento: NgbTypeaheadSelectItemEvent): void {
+    evento.preventDefault();
+    const clienteSeleccionado = evento.item;
+    this.cliente = this.clienteFormatter(clienteSeleccionado);
+    this.selectedClientId = clienteSeleccionado.id;
+  }
 
   private _generarNumeroCotizacion(): string {
     const now = new Date();
@@ -66,18 +107,34 @@ export class QuoteCreator {
       descripcion: '',
       unidad: '',
       cantidad: null,
-      precioUnitario: null
+      precioUnitario: null,
+      producto_id: null // <-- AÑADE ESTA PROPIEDAD AQUÍ TAMBIÉN
+
     });
   }
 
-  onSelectItem(event: NgbTypeaheadSelectItemEvent, item: QuoteItem): void {
+  onProductSelect(event: NgbTypeaheadSelectItemEvent, item: QuoteItem): void {
     event.preventDefault();
-    item.descripcion = event.item;
-    if (this.productosSugeridos.includes(event.item)) {
-      item.unidad = 'm³';
-    }
+    const productoSeleccionado = event.item;
+    item.descripcion = productoSeleccionado.descripcion;
+    item.unidad = productoSeleccionado.unidad;
+    item.precioUnitario = productoSeleccionado.precio_unitario_base;
+    item.producto_id = productoSeleccionado.id;
   }
 
+  searchProductos: OperatorFunction<string, readonly any[]> = (text$: Observable<string>) =>
+    text$.pipe(
+      debounceTime(200),
+      distinctUntilChanged(),
+      map(term =>
+        term.length < 2
+          ? []
+          : this.productos.filter(p => p.descripcion.toLowerCase().includes(term.toLowerCase())).slice(0, 10)
+      )
+    );
+
+  productoFormatter = (producto: any): string => producto.descripcion;
+  
   removeItem(id: number): void {
     this.items = this.items.filter(item => item.id !== id);
   }

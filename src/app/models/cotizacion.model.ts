@@ -5,6 +5,8 @@ export interface QuoteItem {
   unidad: string;
   cantidad: number | null;
   precioUnitario: number | null;
+  producto_id: string | null; // <-- AÑADE ESTA PROPIEDAD
+
 }
 
 // Define todos los ingredientes para el PDF completo

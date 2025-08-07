@@ -29,5 +29,34 @@ export class SupabaseService {
 
     return data;
   }
+  /**
+   * Obtiene todos los clientes de la base de datos.
+   */
+  async fetchClientes() {
+    const { data, error } = await this.supabase
+      .from('clientes')
+      .select('*');
+
+    if (error) {
+      console.error('Error al obtener clientes:', error);
+      return null;
+    }
+    return data;
+  }
+
+  /**
+   * Obtiene todos los productos de la base de datos.
+   */
+  async fetchProductos() {
+    const { data, error } = await this.supabase
+      .from('productos')
+      .select('*');
+
+    if (error) {
+      console.error('Error al obtener productos:', error);
+      return null;
+    }
+    return data;
+  }
 }
 
