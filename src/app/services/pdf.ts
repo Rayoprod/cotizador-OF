@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-export interface CotizacionData {
 import { CotizacionData } from '../models/cotizacion.model';
 
 @Injectable({
