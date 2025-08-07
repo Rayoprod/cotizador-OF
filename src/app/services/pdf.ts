@@ -1,19 +1,8 @@
 import { Injectable } from '@angular/core';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-
-// Definimos una interfaz (un "molde") para los datos de la cotización
 export interface CotizacionData {
-  numeroCotizacion: string;
-  cliente: string;
-  fecha: string;
-  items: any[];
-  subtotal: number;
-  igv: number;
-  total: number;
-  incluirIGV: boolean;
-  entregaEnObra: boolean;
-}
+import { CotizacionData } from '../models/cotizacion.model';
 
 @Injectable({
   providedIn: 'root'

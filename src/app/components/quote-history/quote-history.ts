@@ -1,15 +1,9 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { SupabaseService } from '../../services/supabase';
-import { PdfService, CotizacionData } from '../../services/pdf';
+import { PdfService } from '../../services/pdf';
+import { CotizacionData, QuoteItem } from '../../models/cotizacion.model'; // <-- La importamos del nuevo lugar
 
-export interface QuoteItem {
-  id: number;
-  descripcion: string;
-  unidad: string;
-  cantidad: number | null;
-  precioUnitario: number | null;
-}
 
 export interface Cotizacion {
   id: number;
@@ -18,8 +12,9 @@ export interface Cotizacion {
   cliente: string;
   fecha: string;
   total: number;
-  items: QuoteItem[];
+  items: QuoteItem[]; // <-- Ahora usa la interfaz QuoteItem importada
 }
+
 
 @Component({
   selector: 'app-quote-history',
@@ -47,24 +42,19 @@ export class QuoteHistoryComponent implements OnInit {
     this.isLoading = false;
   }
 
-  verPDF(cotizacion: Cotizacion): void {
-    const subtotal = cotizacion.items.reduce((acc, item) => acc + ((item.cantidad || 0) * (item.precioUnitario || 0)), 0);
-    // Asumimos que si el total es mayor que el subtotal, entonces tenía IGV.
-    const incluirIGV = cotizacion.total > subtotal;
-    const igv = incluirIGV ? subtotal * 0.18 : 0;
+  verPDF(cotizacion: any): void { // Usamos 'any' temporalmente para que acepte las nuevas propiedades
+  const datosParaPDF: CotizacionData = {
+    numeroCotizacion: cotizacion.numero_cotizacion,
+    cliente: cotizacion.cliente,
+    fecha: cotizacion.fecha,
+    items: cotizacion.items,
+    subtotal: cotizacion.subtotal,             // <-- USA EL VALOR GUARDADO
+    igv: cotizacion.igv,                       // <-- USA EL VALOR GUARDADO
+    total: cotizacion.total,
+    incluirIGV: cotizacion.incluir_igv,         // <-- USA EL VALOR GUARDADO
+    entregaEnObra: cotizacion.entrega_en_obra // <-- USA EL VALOR GUARDADO
+  };
 
-    const datosParaPDF: CotizacionData = {
-      numeroCotizacion: cotizacion.numero_cotizacion,
-      cliente: cotizacion.cliente,
-      fecha: cotizacion.fecha,
-      items: cotizacion.items,
-      subtotal: subtotal,
-      igv: igv,
-      total: cotizacion.total,
-      incluirIGV: incluirIGV,
-      entregaEnObra: false // Asumimos un valor por defecto al reimprimir, esto podría mejorarse en el futuro.
-    };
-
-    this.pdfService.generarCotizacionPDF(datosParaPDF);
-  }
+  this.pdfService.generarCotizacionPDF(datosParaPDF);
+}
 }

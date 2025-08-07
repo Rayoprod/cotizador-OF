@@ -6,15 +6,9 @@ import { Observable, OperatorFunction } from 'rxjs';
 import { debounceTime, distinctUntilChanged, map } from 'rxjs/operators';
 import { ToastService } from '../../services/toast';
 import { SupabaseService } from '../../services/supabase';
-import { PdfService, CotizacionData } from '../../services/pdf';
+import { PdfService} from '../../services/pdf';
+import { CotizacionData, QuoteItem } from '../../models/cotizacion.model';
 
-export interface QuoteItem {
-  id: number;
-  descripcion: string;
-  unidad: string;
-  cantidad: number | null;
-  precioUnitario: number | null;
-}
 
 @Component({
   selector: 'app-quote-creator',
@@ -131,11 +125,15 @@ export class QuoteCreator {
     };
 
     const { error } = await this.supabaseService.supabase.from('cotizaciones').insert([{
-      numero_cotizacion: datosCotizacion.numeroCotizacion,
-      cliente: datosCotizacion.cliente,
-      fecha: datosCotizacion.fecha,
-      items: datosCotizacion.items,
-      total: datosCotizacion.total
+  numero_cotizacion: datosCotizacion.numeroCotizacion,
+  cliente: datosCotizacion.cliente,
+  fecha: datosCotizacion.fecha,
+  items: datosCotizacion.items,
+  subtotal: datosCotizacion.subtotal,        // <-- AÑADIDO
+  igv: datosCotizacion.igv,                  // <-- AÑADIDO
+  total: datosCotizacion.total,
+  incluir_igv: datosCotizacion.incluirIGV,     // <-- AÑADIDO
+  entrega_en_obra: datosCotizacion.entregaEnObra // <-- AÑADIDO
     }]);
 
     if (error) {
