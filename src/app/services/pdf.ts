@@ -101,38 +101,54 @@ export class PdfService {
       },
     });
 
+    // --- INICIO DEL NUEVO BLOQUE DE TOTALES CON TABLA ---
     const finalY = (doc as any).lastAutoTable.finalY;
-    const summaryStartY = finalY + 8;
-    const labelColumnX = 165; // Columna para etiquetas (alineadas a la derecha)
-    const valueColumnX = 195;  // Columna para montos (alineados a la derecha)
-    const lineHeight = 6;
-    let currentY = summaryStartY;
 
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
+    // 1. Preparamos el contenido del cuerpo de nuestra nueva tabla de resumen
+    const summaryBody = [];
 
-    // Dibuja Subtotal e IGV si es necesario
     if (datos.incluirIGV) {
-      // Alinea la etiqueta a la derecha en su propia columna
-      doc.text("Subtotal:", labelColumnX, currentY, { align: 'right' });
-      doc.text(this.formatCurrency(datos.subtotal), valueColumnX, currentY, { align: 'right' });
-      currentY += lineHeight;
-
-      doc.text("IGV (18%):", labelColumnX, currentY, { align: 'right' });
-      doc.text(this.formatCurrency(datos.igv), valueColumnX, currentY, { align: 'right' });
-      currentY += lineHeight;
-
-      doc.setDrawColor('#cccccc');
-      doc.line(labelColumnX - 25, currentY - (lineHeight / 2), valueColumnX, currentY - (lineHeight / 2));
+      summaryBody.push(['Subtotal:', this.formatCurrency(datos.subtotal)]);
+      summaryBody.push(['IGV (18%):', this.formatCurrency(datos.igv)]);
     }
 
-    // Total final en negrita
-    doc.setFont('helvetica', 'bold');
-    const totalLabel = datos.incluirIGV ? "TOTAL:" : "TOTAL SIN IGV:";
-    // Alinear la etiqueta a la derecha en su columna garantiza que no choque con el valor
-    doc.text(totalLabel, labelColumnX, currentY, { align: 'right' });
-    doc.text(this.formatCurrency(datos.total), valueColumnX, currentY, { align: 'right' });
-// --- FIN DEL NUEVO BLOQUE DE TOTALES A PRUEBA DE TODO ---
+    // La fila del total siempre se añade
+    summaryBody.push([
+      datos.incluirIGV ? 'TOTAL:' : 'TOTAL SIN IGV:',
+      this.formatCurrency(datos.total)
+    ]);
+
+    // 2. Dibujamos la tabla de resumen usando autoTable
+    autoTable(doc, {
+      // El contenido que acabamos de preparar
+      body: summaryBody,
+      // Posición vertical justo debajo de la tabla principal
+      startY: finalY + 5,
+      // Usamos el tema 'plain' para que no tenga bordes ni cabeceras
+      theme: 'plain',
+      // Definimos un ancho fijo y un margen para alinear la tabla a la derecha
+      tableWidth: 85,
+      margin: { left: 110 },
+      // Estilos para las columnas para un alineado perfecto
+      columnStyles: {
+        0: { // Columna de etiquetas (Subtotal, IGV, TOTAL)
+          halign: 'right', // Alineamos la etiqueta a la derecha
+          fontStyle: 'normal',
+        },
+        1: { // Columna de montos
+          halign: 'right', // Alineamos el monto a la derecha
+        }
+      },
+      // Hook para poner en negrita la última fila (la del TOTAL)
+      didParseCell: function (data) {
+        // Si es la última fila del resumen
+        if (data.row.index === summaryBody.length - 1) {
+          // Aplicamos el estilo de negrita a todas las celdas de esa fila
+          data.cell.styles.fontStyle = 'bold';
+        }
+      }
+    });
+// --- FIN DEL NUEVO BLOQUE DE TOTALES CON TABLA ---
 
     doc.output('dataurlnewwindow');
   }
