@@ -45,8 +45,8 @@ export class QuoteCreator implements OnInit {
   async ngOnInit(): Promise<void> {
 
     // La primera acción ahora es obtener el número de cotización
-  this.numeroCotizacion = await this.supabaseService.getNextCotizacionNumber();
-  this.cdr.detectChanges(); // Actualizamos la vista con el nuevo número
+    this.numeroCotizacion = await this.supabaseService.getNextCotizacionNumber();
+    this.cdr.detectChanges(); // Actualizamos la vista con el nuevo número
     const [clientesData, productosData] = await Promise.all([
 
 
@@ -79,12 +79,12 @@ export class QuoteCreator implements OnInit {
   };
 
   seleccionarCliente(evento: NgbTypeaheadSelectItemEvent): void {
-  evento.preventDefault(); // Previene el comportamiento por defecto
-  const clienteSeleccionado = evento.item;
-  // Usamos el formateador para asegurarnos de que this.cliente sea un string
-  this.cliente = this.clienteFormatter(clienteSeleccionado);
-  this.cdr.detectChanges(); // Forzamos la actualización de la vista
-}
+    evento.preventDefault(); // Previene el comportamiento por defecto
+    const clienteSeleccionado = evento.item;
+    // Usamos el formateador para asegurarnos de que this.cliente sea un string
+    this.cliente = this.clienteFormatter(clienteSeleccionado);
+    this.cdr.detectChanges(); // Forzamos la actualización de la vista
+  }
 
   // --- Lógica de Items (CORREGIDA) ---
   addItem(): void {
@@ -134,67 +134,80 @@ export class QuoteCreator implements OnInit {
     return this.subtotal + this.igv;
   }
 
-  // --- Generación de PDF y Guardado ---
+  // En quote-creator.ts
+
   async generarPDF(): Promise<void> {
-  // 1. Validación simple (solo que los campos no estén vacíos)
-  if (!this.cliente.trim()) {
-    this.toastService.show('Error: Por favor, ingresa un cliente.', { classname: 'bg-danger text-light' });
-    return;
+    // --- 1. Nueva Validación ---
+    // Ahora validamos que el objeto 'cliente' exista y que si es texto, no esté vacío.
+    if (!this.cliente || (typeof this.cliente === 'string' && !this.cliente.trim())) {
+      this.toastService.show('Error: Por favor, ingresa o selecciona un cliente.', { classname: 'bg-danger text-light' });
+      return;
+    }
+    const itemInvalido = this.items.find(item => !item.descripcion.trim() || (item.cantidad || 0) <= 0 || item.precioUnitario === null);
+    if (itemInvalido) {
+      this.toastService.show('Error: Revisa los items.', { classname: 'bg-danger text-light' });
+      return;
+    }
+
+    try {
+      // Obtenemos el nombre del cliente para el PDF y para guardarlo como texto
+      const nombreCliente = typeof this.cliente === 'object' ? this.clienteFormatter(this.cliente) : this.cliente;
+
+      // --- 2. Preparar el objeto para guardar ---
+      const cotizacionParaGuardar = {
+        numero_cotizacion: this.numeroCotizacion,
+        fecha: this.fecha,
+        cliente: nombreCliente, // Guardamos el nombre como texto
+        items: this.items.map(item => ({
+          descripcion: item.descripcion,
+          unidad: item.unidad,
+          cantidad: item.cantidad,
+          precioUnitario: item.precioUnitario
+        })),
+        subtotal: this.subtotal,
+        igv: this.igv,
+        total: this.total,
+        incluir_igv: this.incluirIGV,
+        entrega_en_obra: this.entregaEnObra
+      };
+
+      // --- 3. Guardar todo en la tabla 'cotizaciones' ---
+      const { error } = await this.supabaseService.supabase
+        .from('cotizaciones')
+        .insert(cotizacionParaGuardar);
+
+      if (error) throw error;
+
+      // --- 4. Cargar la firma y generar el PDF ---
+      await this.pdfService.cargarFirma();
+
+      // CÓDIGO CORREGIDO Y SIMPLIFICADO
+
+      // 4. Cargar la firma y generar el PDF
+      await this.pdfService.cargarFirma();
+
+      const datosParaPDF: CotizacionData = {
+        numeroCotizacion: this.numeroCotizacion, // Usamos camelCase
+        cliente: this.cliente,
+        fecha: this.fecha,
+        items: this.items,
+        subtotal: this.subtotal,
+        igv: this.igv,
+        total: this.total,
+        incluirIGV: this.incluirIGV, // Usamos camelCase
+        entregaEnObra: this.entregaEnObra // Usamos camelCase
+      };
+
+      this.pdfService.generarCotizacionPDF(datosParaPDF);
+
+      this.toastService.show('PDF generado y cotización guardada.', { classname: 'bg-success text-light' });
+
+
+    } catch (error: any) {
+      this.toastService.show('Error: No se pudo guardar la cotización.', { classname: 'bg-danger text-light' });
+      console.error('Error al guardar en Supabase:', error.message);
+    }
   }
-  const itemInvalido = this.items.find(item => !item.descripcion.trim() || (item.cantidad || 0) <= 0 || item.precioUnitario === null);
-  if (itemInvalido) {
-    this.toastService.show('Error: Revisa los items. Todos deben tener descripción, cantidad y precio.', { classname: 'bg-danger text-light' });
-    return;
-  }
-
-  try {
-    // 2. Preparar el objeto para guardar
-    const cotizacionParaGuardar = {
-      numero_cotizacion: this.numeroCotizacion,
-      fecha: this.fecha,
-      cliente: this.cliente, // Guarda el texto literal del input, sea cual sea
-      items: this.items.map(item => ({ // Guardamos una copia limpia de los items
-        descripcion: item.descripcion,
-        unidad: item.unidad,
-        cantidad: item.cantidad,
-        precioUnitario: item.precioUnitario
-      })),
-      subtotal: this.subtotal,
-      igv: this.igv,
-      total: this.total,
-      incluir_igv: this.incluirIGV,
-      entrega_en_obra: this.entregaEnObra
-    };
-
-    // 3. Guardar todo en la única tabla 'cotizaciones'
-    const { error } = await this.supabaseService.supabase
-      .from('cotizaciones')
-      .insert(cotizacionParaGuardar);
-
-    if (error) throw error;
-
-    // 4. Cargar la firma y generar el PDF
-    await this.pdfService.cargarFirma();
-
-    this.pdfService.generarCotizacionPDF({
-      numeroCotizacion: this.numeroCotizacion,
-      cliente: this.cliente,
-      fecha: this.fecha,
-      items: this.items,
-      subtotal: this.subtotal,
-      igv: this.igv,
-      total: this.total,
-      incluirIGV: this.incluirIGV,
-      entregaEnObra: this.entregaEnObra
-    });
-
-    this.toastService.show('PDF generado y cotización guardada.', { classname: 'bg-success text-light' });
-
-  } catch (error: any) {
-    this.toastService.show('Error: No se pudo guardar la cotización.', { classname: 'bg-danger text-light' });
-    console.error('Error al guardar en Supabase:', error.message);
-  }
-}
 
 
 }

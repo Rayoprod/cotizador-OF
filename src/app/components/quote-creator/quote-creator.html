@@ -15,10 +15,15 @@
       <div class="row mb-4">
         <div class="col-md-7 mb-3 mb-md-0">
           <label for="cliente" class="form-label">Cliente</label>
-          <input type="text" class="form-control" [(ngModel)]="cliente" [ngbTypeahead]="searchClientes"
-            [resultFormatter]="clienteFormatter" [inputFormatter]="clienteFormatter"
-            (selectItem)="seleccionarCliente($event)" placeholder="Buscar cliente por nombre..." />
-        </div>
+          <input
+  type="text"
+  class="form-control"
+  [(ngModel)]="cliente"
+  [ngbTypeahead]="searchClientes"
+  [resultFormatter]="clienteFormatter"
+  [inputFormatter]="clienteFormatter"
+  placeholder="Buscar cliente por nombre..."
+/>
         <div class="col-md-5">
           <label for="fecha" class="form-label">Fecha</label>
           <input type="text" id="fecha" class="form-control" [(ngModel)]="fecha" placeholder="DD/MM/AAAA">
