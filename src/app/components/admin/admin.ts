@@ -5,44 +5,59 @@ import { SupabaseService } from '../../services/supabase';
 import { ToastService } from '../../services/toast';
 
 @Component({
-  selector: 'app-admin-clientes',
+  selector: 'app-admin',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  templateUrl: './admin-clientes.html',
-  styleUrls: ['./admin-clientes.scss']
+  templateUrl: './admin.html',
+  styleUrls: ['./admin.scss']
 })
-export class AdminClientesComponent implements OnInit {
+export class AdminComponent implements OnInit {
   private supabaseService = inject(SupabaseService);
   private toastService = inject(ToastService);
 
+  // Propiedad para controlar qué vista mostramos: 'clientes' o 'productos'
+  public vistaActual: 'clientes' | 'productos' = 'clientes';
+
+  // --- Propiedades para Clientes ---
   public clientes: any[] = [];
-  public isLoading = true;
-  public isEditing = false;
-  public currentClient: any = {}; // Objeto para el formulario
+  public isLoadingClientes = true;
+  public isEditingClient = false;
+  public currentClient: any = {};
+
+  // --- Propiedades para Productos (las usaremos después) ---
+  public productos: any[] = [];
+  public isLoadingProductos = true;
 
   ngOnInit(): void {
     this.getClientes();
+    // this.getProductos(); // <-- Lo activaremos después
   }
 
+  // --- Función para cambiar de vista ---
+  cambiarVista(vista: 'clientes' | 'productos'): void {
+    this.vistaActual = vista;
+    if (vista === 'clientes') this.getClientes();
+    // if (vista === 'productos') this.getProductos(); // <-- Lo activaremos después
+  }
+
+  // ============== LÓGICA PARA CLIENTES ==============
   async getClientes(): Promise<void> {
-    this.isLoading = true;
+    this.isLoadingClientes = true;
     const data = await this.supabaseService.fetchClientes();
     if (data) {
       this.clientes = data;
     }
-    this.isLoading = false;
+    this.isLoadingClientes = false;
   }
 
   public prepareNewClient(): void {
-    this.currentClient = { tipo_documento: 'DNI' }; // Valor por defecto
-    this.isEditing = false;
-    // Idealmente, aquí se abriría un modal, pero por ahora solo preparamos el objeto
+    this.currentClient = { tipo_documento: 'DNI' };
+    this.isEditingClient = false;
   }
 
   public selectClientForEdit(cliente: any): void {
-    // Creamos una copia para no modificar la lista directamente
     this.currentClient = { ...cliente };
-    this.isEditing = true;
+    this.isEditingClient = true;
   }
 
   public async saveClient(): Promise<void> {
@@ -51,26 +66,23 @@ export class AdminClientesComponent implements OnInit {
       return;
     }
 
-    if (this.isEditing) {
-      // Actualizar cliente existente
+    if (this.isEditingClient) {
       const { error } = await this.supabaseService.updateCliente(this.currentClient.id, this.currentClient);
       if (error) {
         this.toastService.show('Error al actualizar el cliente.', { classname: 'bg-danger text-light' });
       } else {
-        this.toastService.show('Cliente actualizado exitosamente.', { classname: 'bg-success text-light' });
+        this.toastService.show('Cliente actualizado.', { classname: 'bg-success text-light' });
       }
     } else {
-      // Crear nuevo cliente
       const { error } = await this.supabaseService.createCliente(this.currentClient);
       if (error) {
         this.toastService.show('Error al crear el cliente.', { classname: 'bg-danger text-light' });
       } else {
-        this.toastService.show('Cliente creado exitosamente.', { classname: 'bg-success text-light' });
+        this.toastService.show('Cliente creado.', { classname: 'bg-success text-light' });
       }
     }
-
     this.cancelEdit();
-    this.getClientes(); // Recargar la lista
+    this.getClientes();
   }
 
   public async deleteClient(id: string): Promise<void> {
@@ -80,13 +92,13 @@ export class AdminClientesComponent implements OnInit {
         this.toastService.show('Error al eliminar el cliente.', { classname: 'bg-danger text-light' });
       } else {
         this.toastService.show('Cliente eliminado.', { classname: 'bg-info text-light' });
-        this.getClientes(); // Recargar la lista
+        this.getClientes();
       }
     }
   }
 
   public cancelEdit(): void {
     this.currentClient = {};
-    this.isEditing = false;
+    this.isEditingClient = false;
   }
 }
