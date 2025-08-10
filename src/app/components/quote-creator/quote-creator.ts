@@ -136,76 +136,69 @@ export class QuoteCreator implements OnInit {
 
   // En quote-creator.ts
 
-  async generarPDF(): Promise<void> {
-    // --- 1. Nueva Validación ---
-    // Ahora validamos que el objeto 'cliente' exista y que si es texto, no esté vacío.
-    if (!this.cliente || (typeof this.cliente === 'string' && !this.cliente.trim())) {
-      this.toastService.show('Error: Por favor, ingresa o selecciona un cliente.', { classname: 'bg-danger text-light' });
-      return;
-    }
-const itemInvalido = this.items.find(item => {
-  // Primero, nos aseguramos de que la descripción sea un texto
-  const desc = typeof item.descripcion === 'object' && item.descripcion !== null
-    ? (item.descripcion as any).descripcion
-    : item.descripcion;
+  // En quote-creator.ts
+async generarPDF(): Promise<void> {
+  const nombreCliente = this.clienteFormatter(this.cliente);
 
-  // Ahora sí, validamos sobre el texto
-  return !desc || !desc.trim() || (item.cantidad || 0) <= 0 || item.precioUnitario === null;
-});    if (itemInvalido) {
-      this.toastService.show('Error: Revisa los items.', { classname: 'bg-danger text-light' });
-      return;
-    }
+  // 1. Validaciones
+  if (!nombreCliente.trim()) {
+    this.toastService.show('Error: Por favor, ingresa o selecciona un cliente.', { classname: 'bg-danger text-light' });
+    return;
+  }
+  const itemInvalido = this.items.find(item => !this.productoFormatter(item.descripcion).trim() || (item.cantidad || 0) <= 0 || item.precioUnitario === null);
+  if (itemInvalido) {
+    this.toastService.show('Error: Revisa los items.', { classname: 'bg-danger text-light' });
+    return;
+  }
 
-    try {
-      // Obtenemos el nombre del cliente para el PDF y para guardarlo como texto
-      const nombreCliente = typeof this.cliente === 'object' ? this.clienteFormatter(this.cliente) : this.cliente;
+  try {
+    // 2. Preparar el objeto para guardar en la BD (con textos limpios)
+    const cotizacionParaGuardar = {
+      numero_cotizacion: this.numeroCotizacion,
+      fecha: this.fecha,
+      cliente: nombreCliente,
+      items: this.items.map(item => ({
+        descripcion: this.productoFormatter(item.descripcion), // Asegura que sea texto
+        unidad: item.unidad,
+        cantidad: item.cantidad,
+        precioUnitario: item.precioUnitario
+      })),
+      subtotal: this.subtotal,
+      igv: this.igv,
+      total: this.total,
+      incluir_igv: this.incluirIGV,
+      entrega_en_obra: this.entregaEnObra
+    };
 
-      // --- 2. Preparar el objeto para guardar ---
-      const cotizacionParaGuardar = {
-        numero_cotizacion: this.numeroCotizacion,
-        fecha: this.fecha,
-        cliente: nombreCliente, // Guardamos el nombre como texto
-        items: this.items.map(item => ({
-          descripcion: item.descripcion,
-          unidad: item.unidad,
-          cantidad: item.cantidad,
-          precioUnitario: item.precioUnitario
-        })),
-        subtotal: this.subtotal,
-        igv: this.igv,
-        total: this.total,
-        incluir_igv: this.incluirIGV,
-        entrega_en_obra: this.entregaEnObra
-      };
+    // 3. Guardar en Supabase
+    const { error } = await this.supabaseService.supabase
+      .from('cotizaciones')
+      .insert(cotizacionParaGuardar);
+    if (error) throw error;
 
-      // --- 3. Guardar todo en la tabla 'cotizaciones' ---
-      const { error } = await this.supabaseService.supabase
-        .from('cotizaciones')
-        .insert(cotizacionParaGuardar);
+    // 4. Cargar firma y generar el PDF
+    await this.pdfService.cargarFirma();
 
-      if (error) throw error;
+    // El objeto para el PDF ahora usa los items originales (que sí tienen id)
+    // pero con el cliente ya formateado como texto.
+    this.pdfService.generarCotizacionPDF({
+      numeroCotizacion: this.numeroCotizacion,
+      cliente: nombreCliente,
+      fecha: this.fecha,
+      items: this.items, // Pasamos los items originales, que cumplen con la interfaz
+      subtotal: this.subtotal,
+      igv: this.igv,
+      total: this.total,
+      incluirIGV: this.incluirIGV,
+      entregaEnObra: this.entregaEnObra
+    });
+    this.toastService.show('PDF generado y cotización guardada exitosamente.', { classname: 'bg-success text-light' });
 
-      // --- 4. Cargar la firma y generar el PDF ---
-      await this.pdfService.cargarFirma();
+  } catch (error: any) {
+    this.toastService.show('Error: No se pudo guardar la cotización.', { classname: 'bg-danger text-light' });
+    console.error('Error al guardar en Supabase:', error.message);
+  }
 
-      // CÓDIGO CORREGIDO Y SIMPLIFICADO
-
-      // 4. Cargar la firma y generar el PDF
-      await this.pdfService.cargarFirma();
-
-      const datosParaPDF: CotizacionData = {
-        numeroCotizacion: this.numeroCotizacion, // Usamos camelCase
-        cliente: this.cliente,
-        fecha: this.fecha,
-        items: this.items,
-        subtotal: this.subtotal,
-        igv: this.igv,
-        total: this.total,
-        incluirIGV: this.incluirIGV, // Usamos camelCase
-        entregaEnObra: this.entregaEnObra // Usamos camelCase
-      };
-
-      this.pdfService.generarCotizacionPDF(datosParaPDF);
 
       this.toastService.show('PDF generado y cotización guardada.', { classname: 'bg-success text-light' });
 
@@ -216,5 +209,3 @@ const itemInvalido = this.items.find(item => {
     }
   }
 
-
-}
