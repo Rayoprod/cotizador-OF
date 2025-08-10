@@ -16,21 +16,16 @@ export class SupabaseService {
     );
   }
   // --- NUEVA FUNCIÓN ---
-  async fetchCotizaciones() {
+ // En SupabaseService
+
+async fetchCotizaciones() {
   const { data, error } = await this.supabase
     .from('cotizaciones')
-    .select(`
-      *,
-      clientes (*),
-      cotizacion_items (
-        *,
-        productos (*)
-      )
-    `)
-    .order('created_at', { ascending: false }); // Opcional: para mostrar las más recientes primero
+    .select('*') // Simplemente trae todo de la tabla 'cotizaciones'
+    .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Error al obtener cotizaciones con detalles:', error);
+    console.error('Error al obtener cotizaciones:', error);
     return null;
   }
   return data;
