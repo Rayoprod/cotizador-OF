@@ -22,10 +22,9 @@ import { CotizacionData, QuoteItem } from '../../models/cotizacion.model';
   styleUrls: ['./quote-creator.scss']
 })
 export class QuoteCreator implements OnInit {
-
-  numeroCotizacion: string = 'Cargando...'; // Valor inicial mientras espera
-  cliente: any = null; // Cambiamos a 'any' para manejar el objeto temporalmente
-  selectedClientId: string | null = null;
+  // --- Propiedades del Componente ---
+  numeroCotizacion: string = 'Cargando...';
+  cliente: any = ''; // Se manejará como texto (si escribe) o como objeto (si selecciona)
   fecha: string = new Date().toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
   items: QuoteItem[] = [];
   clientes: any[] = [];
@@ -34,6 +33,7 @@ export class QuoteCreator implements OnInit {
   entregaEnObra: boolean = false;
   private nextId = 1;
 
+  // --- Inyección de Servicios ---
   toastService = inject(ToastService);
   supabaseService = inject(SupabaseService);
   private pdfService = inject(PdfService);
@@ -43,13 +43,12 @@ export class QuoteCreator implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
-
-    // La primera acción ahora es obtener el número de cotización
+    // 1. Obtiene el número de cotización secuencial
     this.numeroCotizacion = await this.supabaseService.getNextCotizacionNumber();
-    this.cdr.detectChanges(); // Actualizamos la vista con el nuevo número
+    this.cdr.detectChanges(); // Actualiza la vista con el número
+
+    // 2. Carga los datos para el autocompletar
     const [clientesData, productosData] = await Promise.all([
-
-
       this.supabaseService.fetchClientes(),
       this.supabaseService.fetchProductos()
     ]);
@@ -57,7 +56,7 @@ export class QuoteCreator implements OnInit {
     this.productos = productosData || [];
   }
 
-  // --- Lógica de Buscador de Clientes (CORREGIDA) ---
+  // --- Lógica de Buscador de Clientes ---
   searchClientes: OperatorFunction<string, readonly any[]> = (text$: Observable<string>) =>
     text$.pipe(
       debounceTime(200),
@@ -66,35 +65,27 @@ export class QuoteCreator implements OnInit {
         term.length < 2
           ? []
           : this.clientes.filter(c => {
-            const nombreCompleto = `${c.nombres || ''} ${c.apellido_paterno || ''} ${c.apellido_materno || ''}`.toLowerCase();
-            const razonSocial = (c.razon_social || '').toLowerCase();
-            return nombreCompleto.includes(term.toLowerCase()) || razonSocial.includes(term.toLowerCase());
-          }).slice(0, 10)
+              const nombreCompleto = `${c.nombres || ''} ${c.apellido_paterno || ''} ${c.apellido_materno || ''}`.toLowerCase();
+              const razonSocial = (c.razon_social || '').toLowerCase();
+              return nombreCompleto.includes(term.toLowerCase()) || razonSocial.includes(term.toLowerCase());
+            }).slice(0, 10)
       )
     );
 
   clienteFormatter = (cliente: any): string => {
     if (!cliente) return '';
+    if (typeof cliente === 'string') return cliente; // Si es texto, lo devuelve tal cual
     return cliente.razon_social || `${cliente.nombres || ''} ${cliente.apellido_paterno || ''}`.trim();
   };
 
-  seleccionarCliente(evento: NgbTypeaheadSelectItemEvent): void {
-    evento.preventDefault(); // Previene el comportamiento por defecto
-    const clienteSeleccionado = evento.item;
-    // Usamos el formateador para asegurarnos de que this.cliente sea un string
-    this.cliente = this.clienteFormatter(clienteSeleccionado);
-    this.cdr.detectChanges(); // Forzamos la actualización de la vista
-  }
-
-  // --- Lógica de Items (CORREGIDA) ---
+  // --- Lógica de Items ---
   addItem(): void {
     this.items.push({
       id: this.nextId++,
-      descripcion: '',
+      descripcion: '', // Se manejará como texto o como objeto
       unidad: '',
       cantidad: null,
       precioUnitario: null,
-      producto_id: null
     });
   }
 
@@ -103,11 +94,12 @@ export class QuoteCreator implements OnInit {
   }
 
   onProductSelect(event: NgbTypeaheadSelectItemEvent, item: QuoteItem): void {
+    event.preventDefault();
     const productoSeleccionado = event.item;
-    item.descripcion = productoSeleccionado.descripcion; // Para PDF
+    item.descripcion = productoSeleccionado.descripcion;
     item.unidad = productoSeleccionado.unidad;
     item.precioUnitario = productoSeleccionado.precio_unitario_base;
-    item.producto_id = productoSeleccionado.id; // Para BD
+    this.cdr.detectChanges();
   }
 
   searchProductos: OperatorFunction<string, readonly any[]> = (text$: Observable<string>) =>
@@ -121,7 +113,11 @@ export class QuoteCreator implements OnInit {
       )
     );
 
-  productoFormatter = (producto: any): string => producto.descripcion;
+  productoFormatter = (producto: any): string => {
+    if (!producto) return '';
+    if (typeof producto === 'string') return producto; // Si es texto, lo devuelve tal cual
+    return producto.descripcion || '';
+  }
 
   // --- Getters para Cálculos ---
   get subtotal(): number {
@@ -134,80 +130,68 @@ export class QuoteCreator implements OnInit {
     return this.subtotal + this.igv;
   }
 
-  // En quote-creator.ts
+  // --- Generación de PDF y Guardado ---
+  async generarPDF(): Promise<void> {
+    const nombreCliente = this.clienteFormatter(this.cliente);
 
-  // En quote-creator.ts
-async generarPDF(): Promise<void> {
-  const nombreCliente = this.clienteFormatter(this.cliente);
+    // 1. Validaciones
+    if (!nombreCliente.trim()) {
+      this.toastService.show('Error: Por favor, ingresa o selecciona un cliente.', { classname: 'bg-danger text-light' });
+      return;
+    }
+    const itemInvalido = this.items.find(item => !this.productoFormatter(item.descripcion).trim() || (item.cantidad || 0) <= 0 || item.precioUnitario === null);
+    if (itemInvalido) {
+      this.toastService.show('Error: Revisa los items. Todos deben tener descripción, cantidad y precio.', { classname: 'bg-danger text-light' });
+      return;
+    }
 
-  // 1. Validaciones
-  if (!nombreCliente.trim()) {
-    this.toastService.show('Error: Por favor, ingresa o selecciona un cliente.', { classname: 'bg-danger text-light' });
-    return;
-  }
-  const itemInvalido = this.items.find(item => !this.productoFormatter(item.descripcion).trim() || (item.cantidad || 0) <= 0 || item.precioUnitario === null);
-  if (itemInvalido) {
-    this.toastService.show('Error: Revisa los items.', { classname: 'bg-danger text-light' });
-    return;
-  }
+    try {
+      // 2. Preparar el objeto para guardar en la BD (con textos limpios)
+      const cotizacionParaGuardar = {
+        numero_cotizacion: this.numeroCotizacion,
+        fecha: this.fecha,
+        cliente: nombreCliente,
+        items: this.items.map(item => ({
+          descripcion: this.productoFormatter(item.descripcion), // Asegura que sea texto
+          unidad: item.unidad,
+          cantidad: item.cantidad,
+          precioUnitario: item.precioUnitario
+        })),
+        subtotal: this.subtotal,
+        igv: this.igv,
+        total: this.total,
+        incluir_igv: this.incluirIGV,
+        entrega_en_obra: this.entregaEnObra
+      };
 
-  try {
-    // 2. Preparar el objeto para guardar en la BD (con textos limpios)
-    const cotizacionParaGuardar = {
-      numero_cotizacion: this.numeroCotizacion,
-      fecha: this.fecha,
-      cliente: nombreCliente,
-      items: this.items.map(item => ({
-        descripcion: this.productoFormatter(item.descripcion), // Asegura que sea texto
-        unidad: item.unidad,
-        cantidad: item.cantidad,
-        precioUnitario: item.precioUnitario
-      })),
-      subtotal: this.subtotal,
-      igv: this.igv,
-      total: this.total,
-      incluir_igv: this.incluirIGV,
-      entrega_en_obra: this.entregaEnObra
-    };
+      // 3. Guardar en Supabase
+      const { error } = await this.supabaseService.supabase
+        .from('cotizaciones')
+        .insert(cotizacionParaGuardar);
+      if (error) throw error;
 
-    // 3. Guardar en Supabase
-    const { error } = await this.supabaseService.supabase
-      .from('cotizaciones')
-      .insert(cotizacionParaGuardar);
-    if (error) throw error;
+      // 4. Cargar firma y generar el PDF
+      await this.pdfService.cargarFirma();
 
-    // 4. Cargar firma y generar el PDF
-    await this.pdfService.cargarFirma();
-    const datosParaPDF: CotizacionData = {
-  numeroCotizacion: this.numeroCotizacion,
-  cliente: nombreCliente,
-  fecha: this.fecha,
-  items: this.items.map(item => ({ // <-- ESTA ES LA CORRECCIÓN CLAVE
-    ...item, // Copia todas las propiedades originales (id, cantidad, etc.)
-    descripcion: this.productoFormatter(item.descripcion) // Asegura que la descripción sea un texto
-  })),
-  subtotal: this.subtotal,
-  igv: this.igv,
-  total: this.total,
-  incluirIGV: this.incluirIGV,
-  entregaEnObra: this.entregaEnObra
-};
-
-this.pdfService.generarCotizacionPDF(datosParaPDF);
-    this.toastService.show('PDF generado y cotización guardada exitosamente.', { classname: 'bg-success text-light' });
-
-  } catch (error: any) {
-    this.toastService.show('Error: No se pudo guardar la cotización.', { classname: 'bg-danger text-light' });
-    console.error('Error al guardar en Supabase:', error.message);
-  }
-
-
-      this.toastService.show('PDF generado y cotización guardada.', { classname: 'bg-success text-light' });
-
+      this.pdfService.generarCotizacionPDF({
+        numeroCotizacion: this.numeroCotizacion,
+        cliente: nombreCliente,
+        fecha: this.fecha,
+        items: this.items.map(item => ({
+          ...item, // Copia todas las propiedades del item original
+          descripcion: this.productoFormatter(item.descripcion) // Sobrescribe la descripción con el texto limpio
+        })),
+        subtotal: this.subtotal,
+        igv: this.igv,
+        total: this.total,
+        incluirIGV: this.incluirIGV,
+        entregaEnObra: this.entregaEnObra
+      });
+      this.toastService.show('PDF generado y cotización guardada exitosamente.', { classname: 'bg-success text-light' });
 
     } catch (error: any) {
       this.toastService.show('Error: No se pudo guardar la cotización.', { classname: 'bg-danger text-light' });
       console.error('Error al guardar en Supabase:', error.message);
     }
   }
-
+}
