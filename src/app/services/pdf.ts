@@ -7,22 +7,18 @@ import { CotizacionData } from '../models/cotizacion.model';
   providedIn: 'root'
 })
 export class PdfService {
-  private firmaBase64: string | null = null; // Para guardar la imagen cargada
+  private firmaBase64: string | null = null;
 
   constructor() { }
-async cargarFirma(): Promise<void> {
-    // Si ya la cargamos antes, no hacemos nada
+
+  async cargarFirma(): Promise<void> {
     if (this.firmaBase64) {
       return;
     }
-
     try {
-      // Lee la imagen desde la carpeta assets
-      const response = await fetch('assets/FIRMA_MARIALUZ.png'); // <-- CAMBIA ESTO por el nombre de tu imagen
+      const response = await fetch('assets/FIRMA_MARIALUZ.png');
       const blob = await response.blob();
       const reader = new FileReader();
-
-      // La convertimos a Base64 y la guardamos en la variable
       return new Promise(resolve => {
         reader.onloadend = () => {
           this.firmaBase64 = reader.result as string;
@@ -34,12 +30,14 @@ async cargarFirma(): Promise<void> {
       console.error("Error al cargar la imagen de la firma:", error);
     }
   }
+
   private formatCurrency(value: number | null): string {
     const formatter = new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' });
     return formatter.format(value || 0).replace('PEN', 'S/ ');
   }
 
-  generarCotizacionPDF(datos: CotizacionData): void {
+  // --- INICIO DE LA FUNCIÓN MODIFICADA ---
+  async generarCotizacionPDF(datos: CotizacionData): Promise<void> {
     const doc = new jsPDF();
     const head = [['N°', 'Descripción', 'Unidad', 'Cant.', 'P. Unit.', 'Total']];
     const body = datos.items.map((item: any, index: number) => [
@@ -118,14 +116,12 @@ async cargarFirma(): Promise<void> {
         doc.text("* Cta. Detraccion Banco de la Nación: 00615009040", 15, footerY);
         doc.text("* Cta. Banco de Credito: 194-20587879-0-35", 15, footerY + 4);
         doc.text("* CCI. BCP: 00219412058787903595", 15, footerY + 8);
-        doc.setDrawColor(primaryColor);
-        doc.line(140, pageHeight - 15, 195, pageHeight - 15);
+
         if (this.firmaBase64) {
           const anchoImagen = 55;
           const altoImagen = 24;
-          const xPosicion = 167.5 - (anchoImagen / 2); // Para centrar la imagen
-          const yPosicion = pageHeight - 15 - altoImagen; // Posiciona la imagen justo encima de la línea
-
+          const xPosicion = 167.5 - (anchoImagen / 2);
+          const yPosicion = pageHeight - 15 - altoImagen;
           doc.addImage(this.firmaBase64, 'PNG', xPosicion, yPosicion, anchoImagen, altoImagen);
         }
         doc.setFontSize(8); doc.setTextColor(secondaryColor);
@@ -133,55 +129,49 @@ async cargarFirma(): Promise<void> {
       },
     });
 
-    // --- INICIO DEL NUEVO BLOQUE DE TOTALES CON TABLA ---
     const finalY = (doc as any).lastAutoTable.finalY;
-
-    // 1. Preparamos el contenido del cuerpo de nuestra nueva tabla de resumen
     const summaryBody = [];
-
     if (datos.incluirIGV) {
       summaryBody.push(['Subtotal:', this.formatCurrency(datos.subtotal)]);
       summaryBody.push(['IGV (18%):', this.formatCurrency(datos.igv)]);
     }
-
-    // La fila del total siempre se añade
     summaryBody.push([
       datos.incluirIGV ? 'TOTAL:' : 'TOTAL SIN IGV:',
       this.formatCurrency(datos.total)
     ]);
-
-    // 2. Dibujamos la tabla de resumen usando autoTable
     autoTable(doc, {
-      // El contenido que acabamos de preparar
       body: summaryBody,
-      // Posición vertical justo debajo de la tabla principal
       startY: finalY + 5,
-      // Usamos el tema 'plain' para que no tenga bordes ni cabeceras
       theme: 'plain',
-      // Definimos un ancho fijo y un margen para alinear la tabla a la derecha
       tableWidth: 85,
       margin: { left: 110 },
-      // Estilos para las columnas para un alineado perfecto
       columnStyles: {
-        0: { // Columna de etiquetas (Subtotal, IGV, TOTAL)
-          halign: 'right', // Alineamos la etiqueta a la derecha
-          fontStyle: 'normal',
-        },
-        1: { // Columna de montos
-          halign: 'right', // Alineamos el monto a la derecha
-        }
+        0: { halign: 'right', fontStyle: 'normal' },
+        1: { halign: 'right' }
       },
-      // Hook para poner en negrita la última fila (la del TOTAL)
       didParseCell: function (data) {
-        // Si es la última fila del resumen
         if (data.row.index === summaryBody.length - 1) {
-          // Aplicamos el estilo de negrita a todas las celdas de esa fila
           data.cell.styles.fontStyle = 'bold';
         }
       }
     });
-// --- FIN DEL NUEVO BLOQUE DE TOTALES CON TABLA ---
 
-    doc.output('dataurlnewwindow');
+    // --- NUEVA LÓGICA PARA COMPARTIR O ABRIR EL PDF ---
+    if (navigator.share) {
+      try {
+        const blob = doc.output('blob');
+        const file = new File([blob], `Cotizacion-${datos.numeroCotizacion}.pdf`, { type: 'application/pdf' });
+
+        await navigator.share({
+          title: `Cotización ${datos.numeroCotizacion}`,
+          text: `Adjunto la cotización para ${datos.cliente}.`,
+          files: [file],
+        });
+      } catch (error) {
+        console.error('Error al intentar compartir:', error);
+      }
+    } else {
+      doc.output('dataurlnewwindow');
+    }
   }
 }
