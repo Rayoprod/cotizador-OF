@@ -73,12 +73,10 @@ export class QuoteCreator implements OnInit {
   };
 
   seleccionarCliente(evento: NgbTypeaheadSelectItemEvent): void {
-    evento.preventDefault(); // Previene que ng-bootstrap asigne el objeto entero
-    const clienteSeleccionado = evento.item;
-    this.cliente = this.clienteFormatter(clienteSeleccionado); // Asignamos el NOMBRE (string)
-    this.selectedClientId = clienteSeleccionado.id;
-    this.cdr.detectChanges(); // Forzamos la actualización de la vista
-  }
+  const clienteSeleccionado = evento.item;
+  this.cliente = this.clienteFormatter(clienteSeleccionado); // Para mostrar en PDF
+  this.selectedClientId = clienteSeleccionado.id; // Para guardar en BD
+}
 
   // --- Lógica de Items (CORREGIDA) ---
   addItem(): void {
@@ -97,14 +95,12 @@ export class QuoteCreator implements OnInit {
   }
 
   onProductSelect(event: NgbTypeaheadSelectItemEvent, item: QuoteItem): void {
-    event.preventDefault(); // Previene que ng-bootstrap asigne el objeto entero
-    const productoSeleccionado = event.item;
-    item.descripcion = productoSeleccionado.descripcion; // Asignamos la DESCRIPCIÓN (string)
-    item.unidad = productoSeleccionado.unidad;
-    item.precioUnitario = productoSeleccionado.precio_unitario_base;
-    item.producto_id = productoSeleccionado.id;
-    this.cdr.detectChanges(); // Forzamos la actualización de la vista
-  }
+  const productoSeleccionado = event.item;
+  item.descripcion = productoSeleccionado.descripcion; // Para PDF
+  item.unidad = productoSeleccionado.unidad;
+  item.precioUnitario = productoSeleccionado.precio_unitario_base;
+  item.producto_id = productoSeleccionado.id; // Para BD
+}
 
   searchProductos: OperatorFunction<string, readonly any[]> = (text$: Observable<string>) =>
     text$.pipe(
