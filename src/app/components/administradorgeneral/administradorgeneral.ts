@@ -1,8 +1,9 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, TemplateRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseService } from '../../services/supabase';
 import { ToastService } from '../../services/toast';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 
 @Component({
   selector: 'app-administradorgeneral',
@@ -14,8 +15,8 @@ import { ToastService } from '../../services/toast';
 export class AdministradorgeneralComponent implements OnInit {
   private supabaseService = inject(SupabaseService);
   private toastService = inject(ToastService);
+  private modalService = inject(NgbModal); // <-- Servicio para los modales
 
-  // Propiedad para controlar qué vista mostramos: 'clientes' o 'productos'
   public vistaActual: 'clientes' | 'productos' = 'clientes';
 
   // --- Propiedades para Clientes ---
@@ -35,7 +36,6 @@ export class AdministradorgeneralComponent implements OnInit {
     this.getProductos();
   }
 
-  // --- Función para cambiar de vista ---
   cambiarVista(vista: 'clientes' | 'productos'): void {
     this.vistaActual = vista;
   }
@@ -48,14 +48,15 @@ export class AdministradorgeneralComponent implements OnInit {
     this.isLoadingClientes = false;
   }
 
-  prepareNewClient(): void {
-    this.currentClient = { tipo_documento: 'DNI' };
-    this.isEditingClient = false;
-  }
-
-  selectClientForEdit(cliente: any): void {
-    this.currentClient = { ...cliente };
-    this.isEditingClient = true;
+  openClientModal(content: TemplateRef<any>, cliente?: any): void {
+    if (cliente) {
+      this.currentClient = { ...cliente };
+      this.isEditingClient = true;
+    } else {
+      this.currentClient = { tipo_documento: 'DNI' };
+      this.isEditingClient = false;
+    }
+    this.modalService.open(content, { ariaLabelledBy: 'modal-basic-title', size: 'lg' });
   }
 
   async saveClient(): Promise<void> {
@@ -69,14 +70,13 @@ export class AdministradorgeneralComponent implements OnInit {
       : this.supabaseService.createCliente(this.currentClient);
 
     const { error } = await promise;
-
     if (error) {
       this.toastService.show(`Error al ${this.isEditingClient ? 'actualizar' : 'crear'} el cliente.`, { classname: 'bg-danger text-light' });
     } else {
       this.toastService.show(`Cliente ${this.isEditingClient ? 'actualizado' : 'creado'}.`, { classname: 'bg-success text-light' });
     }
 
-    this.cancelEditClient();
+    this.modalService.dismissAll(); // Cierra el modal al guardar
     this.getClientes();
   }
 
@@ -92,11 +92,6 @@ export class AdministradorgeneralComponent implements OnInit {
     }
   }
 
-  cancelEditClient(): void {
-    this.currentClient = {};
-    this.isEditingClient = false;
-  }
-
   // ============== LÓGICA PARA PRODUCTOS ==============
   async getProductos(): Promise<void> {
     this.isLoadingProductos = true;
@@ -105,42 +100,41 @@ export class AdministradorgeneralComponent implements OnInit {
     this.isLoadingProductos = false;
   }
 
-  prepareNewProduct(): void {
-    this.currentProduct = { unidad: 'unidad' };
-    this.isEditingProduct = false;
-  }
-
-  selectProductForEdit(producto: any): void {
-    this.currentProduct = { ...producto };
-    this.isEditingProduct = true;
+  openProductModal(content: TemplateRef<any>, producto?: any): void {
+    if (producto) {
+      this.currentProduct = { ...producto };
+      this.isEditingProduct = true;
+    } else {
+      this.currentProduct = { unidad: 'unidad' };
+      this.isEditingProduct = false;
+    }
+    this.modalService.open(content, { ariaLabelledBy: 'modal-basic-title' });
   }
 
   async saveProduct(): Promise<void> {
-    if (!this.currentProduct.descripcion) {
+    if (!this.currentProduct.descripcion || !this.currentProduct.descripcion.trim()) {
       this.toastService.show('La descripción es requerida.', { classname: 'bg-danger text-light' });
       return;
     }
 
-    // Aquí necesitaremos funciones en tu SupabaseService (las crearemos si no existen)
     const promise = this.isEditingProduct
-      ? this.supabaseService.supabase.from('productos').update(this.currentProduct).eq('id', this.currentProduct.id)
-      : this.supabaseService.supabase.from('productos').insert(this.currentProduct);
+      ? this.supabaseService.updateProducto(this.currentProduct.id, this.currentProduct)
+      : this.supabaseService.createProducto(this.currentProduct);
 
     const { error } = await promise;
-
     if (error) {
       this.toastService.show(`Error al ${this.isEditingProduct ? 'actualizar' : 'crear'} el producto.`, { classname: 'bg-danger text-light' });
     } else {
       this.toastService.show(`Producto ${this.isEditingProduct ? 'actualizado' : 'creado'}.`, { classname: 'bg-success text-light' });
     }
 
-    this.cancelEditProduct();
+    this.modalService.dismissAll(); // Cierra el modal al guardar
     this.getProductos();
   }
 
   async deleteProduct(id: string): Promise<void> {
     if (confirm('¿Estás seguro de que deseas eliminar este producto?')) {
-      const { error } = await this.supabaseService.supabase.from('productos').delete().eq('id', id);
+      const { error } = await this.supabaseService.deleteProducto(id);
       if (error) {
         this.toastService.show('Error al eliminar el producto.', { classname: 'bg-danger text-light' });
       } else {
@@ -148,10 +142,5 @@ export class AdministradorgeneralComponent implements OnInit {
         this.getProductos();
       }
     }
-  }
-
-  cancelEditProduct(): void {
-    this.currentProduct = {};
-    this.isEditingProduct = false;
   }
 }
