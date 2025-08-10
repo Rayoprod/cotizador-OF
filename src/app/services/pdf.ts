@@ -122,7 +122,7 @@ async cargarFirma(): Promise<void> {
         doc.line(140, pageHeight - 15, 195, pageHeight - 15);
         if (this.firmaBase64) {
           const anchoImagen = 55;
-          const altoImagen = 15;
+          const altoImagen = 20;
           const xPosicion = 167.5 - (anchoImagen / 2); // Para centrar la imagen
           const yPosicion = pageHeight - 15 - altoImagen; // Posiciona la imagen justo encima de la línea
 
