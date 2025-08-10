@@ -178,20 +178,22 @@ async generarPDF(): Promise<void> {
 
     // 4. Cargar firma y generar el PDF
     await this.pdfService.cargarFirma();
+    const datosParaPDF: CotizacionData = {
+  numeroCotizacion: this.numeroCotizacion,
+  cliente: nombreCliente,
+  fecha: this.fecha,
+  items: this.items.map(item => ({ // <-- ESTA ES LA CORRECCIÓN CLAVE
+    ...item, // Copia todas las propiedades originales (id, cantidad, etc.)
+    descripcion: this.productoFormatter(item.descripcion) // Asegura que la descripción sea un texto
+  })),
+  subtotal: this.subtotal,
+  igv: this.igv,
+  total: this.total,
+  incluirIGV: this.incluirIGV,
+  entregaEnObra: this.entregaEnObra
+};
 
-    // El objeto para el PDF ahora usa los items originales (que sí tienen id)
-    // pero con el cliente ya formateado como texto.
-    this.pdfService.generarCotizacionPDF({
-      numeroCotizacion: this.numeroCotizacion,
-      cliente: nombreCliente,
-      fecha: this.fecha,
-      items: this.items, // Pasamos los items originales, que cumplen con la interfaz
-      subtotal: this.subtotal,
-      igv: this.igv,
-      total: this.total,
-      incluirIGV: this.incluirIGV,
-      entregaEnObra: this.entregaEnObra
-    });
+this.pdfService.generarCotizacionPDF(datosParaPDF);
     this.toastService.show('PDF generado y cotización guardada exitosamente.', { classname: 'bg-success text-light' });
 
   } catch (error: any) {
