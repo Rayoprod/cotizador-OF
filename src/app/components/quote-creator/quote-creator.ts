@@ -1,5 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
-
+import { Component, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NgbTypeaheadModule, NgbTypeaheadSelectItemEvent } from '@ng-bootstrap/ng-bootstrap';
@@ -43,7 +42,7 @@ export class QuoteCreator implements OnInit {
   private pdfService = inject(PdfService);
 
 
-  constructor() {
+  constructor(private cdr: ChangeDetectorRef) {
     this.numeroCotizacion = this._generarNumeroCotizacion();
     this.addItem();
   }
@@ -97,6 +96,8 @@ seleccionarCliente(evento: NgbTypeaheadSelectItemEvent): void {
   // Usamos el mismo formateador para asegurarnos de que se muestre correctamente
   this.cliente = this.clienteFormatter(clienteSeleccionado);
   this.selectedClientId = clienteSeleccionado.id;
+  this.cdr.detectChanges();
+
 }
 
   private _generarNumeroCotizacion(): string {
@@ -133,6 +134,7 @@ seleccionarCliente(evento: NgbTypeaheadSelectItemEvent): void {
     item.unidad = productoSeleccionado.unidad;
     item.precioUnitario = productoSeleccionado.precio_unitario_base;
     item.producto_id = productoSeleccionado.id;
+    this.cdr.detectChanges();
   }
 
   searchProductos: OperatorFunction<string, readonly any[]> = (text$: Observable<string>) =>
