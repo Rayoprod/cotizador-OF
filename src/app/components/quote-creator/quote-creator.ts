@@ -91,13 +91,8 @@ clienteFormatter = (cliente: any): string => {
 };
 
 seleccionarCliente(evento: NgbTypeaheadSelectItemEvent): void {
-  evento.preventDefault();
   const clienteSeleccionado = evento.item;
-  // Usamos el mismo formateador para asegurarnos de que se muestre correctamente
-  this.cliente = this.clienteFormatter(clienteSeleccionado);
   this.selectedClientId = clienteSeleccionado.id;
-  this.cdr.detectChanges();
-
 }
 
   private _generarNumeroCotizacion(): string {
