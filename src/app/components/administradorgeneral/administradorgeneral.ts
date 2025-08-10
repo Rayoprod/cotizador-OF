@@ -105,7 +105,7 @@ export class AdministradorgeneralComponent implements OnInit {
       this.currentProduct = { ...producto };
       this.isEditingProduct = true;
     } else {
-      this.currentProduct = { unidad: 'unidad' };
+      this.currentProduct = { unidad: '' };
       this.isEditingProduct = false;
     }
     this.modalService.open(content, { ariaLabelledBy: 'modal-basic-title' });
@@ -142,5 +142,13 @@ export class AdministradorgeneralComponent implements OnInit {
         this.getProductos();
       }
     }
+  }
+   public formatDocumento(cliente: any): string {
+    if (!cliente?.numero_documento) {
+      return ''; // No muestra nada si no hay número
+    }
+    // Si tiene razón social, asumimos que es RUC. Si no, usamos el tipo que tenga.
+    const tipo = cliente.razon_social ? 'RUC' : cliente.tipo_documento;
+    return `${tipo} - ${cliente.numero_documento}`;
   }
 }

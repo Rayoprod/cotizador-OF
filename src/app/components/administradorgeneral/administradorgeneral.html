@@ -29,8 +29,7 @@
         <tbody>
           <tr *ngFor="let cliente of clientes">
             <td>{{ cliente.razon_social || (cliente.nombres + ' ' + cliente.apellido_paterno) }}</td>
-            <td>{{ cliente.tipo_documento }} - {{ cliente.numero_documento }}</td>
-            <td class="text-end">
+<td>{{ formatDocumento(cliente) }}</td>            <td class="text-end">
               <button class="btn btn-sm btn-outline-secondary me-2" (click)="openClientModal(clientModal, cliente)">Editar</button>
               <button class="btn btn-sm btn-outline-danger" (click)="deleteClient(cliente.id)">Eliminar</button>
             </td>

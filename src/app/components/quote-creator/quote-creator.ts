@@ -52,6 +52,8 @@ export class QuoteCreator implements OnInit {
   }
 
   // --- Lógica de Buscador de Clientes ---
+  // En quote-creator.ts
+
   searchClientes: OperatorFunction<string, readonly any[]> = (text$: Observable<string>) =>
     text$.pipe(
       debounceTime(200),
@@ -60,9 +62,15 @@ export class QuoteCreator implements OnInit {
         term.length < 2
           ? []
           : this.clientes.filter(c => {
+            const busqueda = term.toLowerCase();
             const nombreCompleto = `${c.nombres || ''} ${c.apellido_paterno || ''} ${c.apellido_materno || ''}`.toLowerCase();
             const razonSocial = (c.razon_social || '').toLowerCase();
-            return nombreCompleto.includes(term.toLowerCase()) || razonSocial.includes(term.toLowerCase());
+            const numeroDoc = (c.numero_documento || '').toLowerCase(); // <-- AÑADIMOS ESTA LÍNEA
+
+            // Y AÑADIMOS LA CONDICIÓN DE BÚSQUEDA
+            return nombreCompleto.includes(busqueda) ||
+              razonSocial.includes(busqueda) ||
+              numeroDoc.includes(busqueda);
           }).slice(0, 10)
       )
     );
