@@ -79,10 +79,12 @@ export class QuoteCreator implements OnInit {
   };
 
   seleccionarCliente(evento: NgbTypeaheadSelectItemEvent): void {
-    const clienteSeleccionado = evento.item;
-    this.cliente = this.clienteFormatter(clienteSeleccionado); // Para mostrar en PDF
-    this.selectedClientId = clienteSeleccionado.id; // Para guardar en BD
-  }
+  evento.preventDefault(); // Previene el comportamiento por defecto
+  const clienteSeleccionado = evento.item;
+  // Usamos el formateador para asegurarnos de que this.cliente sea un string
+  this.cliente = this.clienteFormatter(clienteSeleccionado);
+  this.cdr.detectChanges(); // Forzamos la actualización de la vista
+}
 
   // --- Lógica de Items (CORREGIDA) ---
   addItem(): void {
@@ -194,5 +196,5 @@ export class QuoteCreator implements OnInit {
   }
 }
 
-  
+
 }
