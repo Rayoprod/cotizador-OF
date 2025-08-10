@@ -1,13 +1,24 @@
-<div class="container-fluid">
-  <ul class="nav nav-tabs my-3">
-    <li class="nav-item">
-      <a class="nav-link" routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">Crear Cotización</a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" routerLink="/historial" routerLinkActive="active">Historial</a>
-    </li>
-  </ul>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand" routerLink="/">Cotizador W&M</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav">
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/crear-cotizacion" routerLinkActive="active">Crear Cotización</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/historial" routerLinkActive="active">Historial</a>
+        </li>
 
-  <router-outlet></router-outlet>
-  <app-toasts></app-toasts>
-</div>
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/admin/clientes" routerLinkActive="active">Administrar Clientes</a>
+        </li>
+        </ul>
+    </div>
+  </div>
+</nav>
+
+<router-outlet></router-outlet>

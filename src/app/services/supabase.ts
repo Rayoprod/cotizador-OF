@@ -69,5 +69,22 @@ async fetchCotizaciones() {
   }
   return data;
 }
+
+// En supabase.service.ts
+
+  // Función para crear un nuevo cliente
+  createCliente(clienteData: any) {
+    return this.supabase.from('clientes').insert(clienteData);
+  }
+
+  // Función para actualizar un cliente existente por su ID
+  updateCliente(id: string, clienteData: any) {
+    return this.supabase.from('clientes').update(clienteData).eq('id', id);
+  }
+
+  // Función para borrar un cliente por su ID
+  deleteCliente(id: string) {
+    return this.supabase.from('clientes').delete().eq('id', id);
+  }
 }
 
