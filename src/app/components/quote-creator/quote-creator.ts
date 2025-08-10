@@ -23,7 +23,7 @@ import { CotizacionData, QuoteItem } from '../../models/cotizacion.model';
 })
 export class QuoteCreator implements OnInit {
   // --- Propiedades del Componente ---
-  numeroCotizacion: string = 'Cargando...';
+  numeroCotizacion: string = '';
   cliente: any = ''; // Se manejará como texto (si escribe) o como objeto (si selecciona)
   fecha: string = new Date().toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
   items: QuoteItem[] = [];
@@ -43,11 +43,6 @@ export class QuoteCreator implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
-    // 1. Obtiene el número de cotización secuencial
-    this.numeroCotizacion = await this.supabaseService.getNextCotizacionNumber();
-    this.cdr.detectChanges(); // Actualiza la vista con el número
-
-    // 2. Carga los datos para el autocompletar
     const [clientesData, productosData] = await Promise.all([
       this.supabaseService.fetchClientes(),
       this.supabaseService.fetchProductos()
@@ -65,10 +60,10 @@ export class QuoteCreator implements OnInit {
         term.length < 2
           ? []
           : this.clientes.filter(c => {
-              const nombreCompleto = `${c.nombres || ''} ${c.apellido_paterno || ''} ${c.apellido_materno || ''}`.toLowerCase();
-              const razonSocial = (c.razon_social || '').toLowerCase();
-              return nombreCompleto.includes(term.toLowerCase()) || razonSocial.includes(term.toLowerCase());
-            }).slice(0, 10)
+            const nombreCompleto = `${c.nombres || ''} ${c.apellido_paterno || ''} ${c.apellido_materno || ''}`.toLowerCase();
+            const razonSocial = (c.razon_social || '').toLowerCase();
+            return nombreCompleto.includes(term.toLowerCase()) || razonSocial.includes(term.toLowerCase());
+          }).slice(0, 10)
       )
     );
 
@@ -131,28 +126,26 @@ export class QuoteCreator implements OnInit {
   }
 
   // --- Generación de PDF y Guardado ---
-  async generarPDF(): Promise<void> {
-    const nombreCliente = this.clienteFormatter(this.cliente);
+  // En quote-creator.ts
 
-    // 1. Validaciones
-    if (!nombreCliente.trim()) {
-      this.toastService.show('Error: Por favor, ingresa o selecciona un cliente.', { classname: 'bg-danger text-light' });
-      return;
-    }
+  async generarPDF(): Promise<void> {
+    // ... (Tus validaciones se quedan igual)
+    const nombreCliente = this.clienteFormatter(this.cliente);
+    if (!nombreCliente.trim()) { /* ... error ... */ return; }
     const itemInvalido = this.items.find(item => !this.productoFormatter(item.descripcion).trim() || (item.cantidad || 0) <= 0 || item.precioUnitario === null);
-    if (itemInvalido) {
-      this.toastService.show('Error: Revisa los items. Todos deben tener descripción, cantidad y precio.', { classname: 'bg-danger text-light' });
-      return;
-    }
+    if (itemInvalido) { /* ... error ... */ return; }
 
     try {
-      // 2. Preparar el objeto para guardar en la BD (con textos limpios)
+      // 1. OBTENER EL NUEVO NÚMERO DE COTIZACIÓN (AHORA ES EL PRIMER PASO)
+      const nuevoNumeroCotizacion = await this.supabaseService.getNextCotizacionNumber();
+
+      // 2. Preparar el objeto para guardar en la BD
       const cotizacionParaGuardar = {
-        numero_cotizacion: this.numeroCotizacion,
+        numero_cotizacion: nuevoNumeroCotizacion, // <-- Usa el número que acabamos de obtener
         fecha: this.fecha,
         cliente: nombreCliente,
         items: this.items.map(item => ({
-          descripcion: this.productoFormatter(item.descripcion), // Asegura que sea texto
+          descripcion: this.productoFormatter(item.descripcion),
           unidad: item.unidad,
           cantidad: item.cantidad,
           precioUnitario: item.precioUnitario
@@ -174,12 +167,12 @@ export class QuoteCreator implements OnInit {
       await this.pdfService.cargarFirma();
 
       this.pdfService.generarCotizacionPDF({
-        numeroCotizacion: this.numeroCotizacion,
+        numeroCotizacion: nuevoNumeroCotizacion, // <-- Usa el mismo número para el PDF
         cliente: nombreCliente,
         fecha: this.fecha,
         items: this.items.map(item => ({
-          ...item, // Copia todas las propiedades del item original
-          descripcion: this.productoFormatter(item.descripcion) // Sobrescribe la descripción con el texto limpio
+          ...item,
+          descripcion: this.productoFormatter(item.descripcion)
         })),
         subtotal: this.subtotal,
         igv: this.igv,
@@ -187,7 +180,7 @@ export class QuoteCreator implements OnInit {
         incluirIGV: this.incluirIGV,
         entregaEnObra: this.entregaEnObra
       });
-      this.toastService.show('PDF generado y cotización guardada exitosamente.', { classname: 'bg-success text-light' });
+      this.toastService.show(`Cotización ${nuevoNumeroCotizacion} guardada.`, { classname: 'bg-success text-light' });
 
     } catch (error: any) {
       this.toastService.show('Error: No se pudo guardar la cotización.', { classname: 'bg-danger text-light' });
