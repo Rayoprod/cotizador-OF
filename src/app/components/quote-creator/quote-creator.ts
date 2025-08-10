@@ -143,8 +143,15 @@ export class QuoteCreator implements OnInit {
       this.toastService.show('Error: Por favor, ingresa o selecciona un cliente.', { classname: 'bg-danger text-light' });
       return;
     }
-    const itemInvalido = this.items.find(item => !item.descripcion.trim() || (item.cantidad || 0) <= 0 || item.precioUnitario === null);
-    if (itemInvalido) {
+const itemInvalido = this.items.find(item => {
+  // Primero, nos aseguramos de que la descripción sea un texto
+  const desc = typeof item.descripcion === 'object' && item.descripcion !== null
+    ? (item.descripcion as any).descripcion
+    : item.descripcion;
+
+  // Ahora sí, validamos sobre el texto
+  return !desc || !desc.trim() || (item.cantidad || 0) <= 0 || item.precioUnitario === null;
+});    if (itemInvalido) {
       this.toastService.show('Error: Revisa los items.', { classname: 'bg-danger text-light' });
       return;
     }
