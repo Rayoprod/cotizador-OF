@@ -123,14 +123,12 @@ seleccionarCliente(evento: NgbTypeaheadSelectItemEvent): void {
   }
 
   onProductSelect(event: NgbTypeaheadSelectItemEvent, item: QuoteItem): void {
-    event.preventDefault();
-    const productoSeleccionado = event.item;
-    item.descripcion = productoSeleccionado.descripcion;
-    item.unidad = productoSeleccionado.unidad;
-    item.precioUnitario = productoSeleccionado.precio_unitario_base;
-    item.producto_id = productoSeleccionado.id;
-    this.cdr.detectChanges();
-  }
+  const productoSeleccionado = event.item;
+  item.descripcion = productoSeleccionado.descripcion;
+  item.unidad = productoSeleccionado.unidad;
+  item.precioUnitario = productoSeleccionado.precio_unitario_base;
+  item.producto_id = productoSeleccionado.id;
+}
 
   searchProductos: OperatorFunction<string, readonly any[]> = (text$: Observable<string>) =>
     text$.pipe(
