@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { environment } from '../../environments/environment'; // <-- 1. AQUÍ SE IMPORTA
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
@@ -9,82 +9,82 @@ export class SupabaseService {
   public supabase: SupabaseClient;
 
   constructor() {
-    // 2. Y AQUÍ SE USA PARA CREAR LA CONEXIÓN
     this.supabase = createClient(
       environment.supabaseUrl,
       environment.supabaseKey
     );
   }
-  // --- NUEVA FUNCIÓN ---
- // En SupabaseService
 
-async fetchCotizaciones() {
-  const { data, error } = await this.supabase
-    .from('cotizaciones')
-    .select('*') // Simplemente trae todo de la tabla 'cotizaciones'
-    .order('created_at', { ascending: false });
+  // ============== FUNCIONES DE LECTURA (FETCH) ==============
 
-  if (error) {
-    console.error('Error al obtener cotizaciones:', error);
-    return null;
-  }
-  return data;
-}
-  /**
-   * Obtiene todos los clientes de la base de datos.
-   */
   async fetchClientes() {
     const { data, error } = await this.supabase
       .from('clientes')
-      .select('*');
+      .select('*')
+      .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error al obtener clientes:', error);
-      return null;
-    }
+    if (error) console.error('Error al obtener clientes:', error);
     return data;
   }
 
-  /**
-   * Obtiene todos los productos de la base de datos.
-   */
   async fetchProductos() {
     const { data, error } = await this.supabase
       .from('productos')
-      .select('*');
+      .select('*')
+      .order('created_at', { ascending: false });
 
+    if (error) console.error('Error al obtener productos:', error);
+    return data;
+  }
+
+  async fetchCotizaciones() {
+    const { data, error } = await this.supabase
+      .from('cotizaciones')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) console.error('Error al obtener cotizaciones:', error);
+    return data;
+  }
+
+  async getNextCotizacionNumber() {
+    const { data, error } = await this.supabase.rpc('obtener_siguiente_numero_cotizacion');
     if (error) {
-      console.error('Error al obtener productos:', error);
-      return null;
+      console.error('Error al obtener el número de cotización:', error);
+      return `COT-ERROR-${Date.now()}`;
     }
     return data;
   }
 
+  // ============== FUNCIONES DE GESTIÓN DE CLIENTES (CRUD) ==============
 
-  async getNextCotizacionNumber() {
-  const { data, error } = await this.supabase.rpc('obtener_siguiente_numero_cotizacion');
-  if (error) {
-    console.error('Error al obtener el número de cotización:', error);
-    return `COT-ERROR-${Date.now()}`; // Un número de respaldo en caso de error
-  }
-  return data;
-}
-
-// En supabase.service.ts
-
-  // Función para crear un nuevo cliente
   createCliente(clienteData: any) {
     return this.supabase.from('clientes').insert(clienteData);
   }
 
-  // Función para actualizar un cliente existente por su ID
   updateCliente(id: string, clienteData: any) {
+    // Es importante quitar el id del objeto de datos para que no intente actualizar la llave primaria
+    delete clienteData.id;
     return this.supabase.from('clientes').update(clienteData).eq('id', id);
   }
 
-  // Función para borrar un cliente por su ID
   deleteCliente(id: string) {
     return this.supabase.from('clientes').delete().eq('id', id);
   }
-}
 
+  // ============== FUNCIONES DE GESTIÓN DE PRODUCTOS (CRUD) ==============
+
+  createProducto(productoData: any) {
+    return this.supabase.from('productos').insert(productoData);
+  }
+
+  updateProducto(id: string, productoData: any) {
+    delete productoData.id;
+    return this.supabase.from('productos').update(productoData).eq('id', id);
+  }
+
+  deleteProducto(id: string) {
+    return this.supabase.from('productos').delete().eq('id', id);
+  }
+
+} // <-- La clase termina aquí, correctamente

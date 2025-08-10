@@ -1,0 +1,157 @@
+import { Component, inject, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { SupabaseService } from '../../services/supabase';
+import { ToastService } from '../../services/toast';
+
+@Component({
+  selector: 'app-administradorgeneral',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  templateUrl: './administradorgeneral.html',
+  styleUrls: ['./administradorgeneral.scss']
+})
+export class AdministradorgeneralComponent implements OnInit {
+  private supabaseService = inject(SupabaseService);
+  private toastService = inject(ToastService);
+
+  // Propiedad para controlar qué vista mostramos: 'clientes' o 'productos'
+  public vistaActual: 'clientes' | 'productos' = 'clientes';
+
+  // --- Propiedades para Clientes ---
+  public clientes: any[] = [];
+  public isLoadingClientes = true;
+  public isEditingClient = false;
+  public currentClient: any = {};
+
+  // --- Propiedades para Productos ---
+  public productos: any[] = [];
+  public isLoadingProductos = true;
+  public isEditingProduct = false;
+  public currentProduct: any = {};
+
+  ngOnInit(): void {
+    this.getClientes();
+    this.getProductos();
+  }
+
+  // --- Función para cambiar de vista ---
+  cambiarVista(vista: 'clientes' | 'productos'): void {
+    this.vistaActual = vista;
+  }
+
+  // ============== LÓGICA PARA CLIENTES ==============
+  async getClientes(): Promise<void> {
+    this.isLoadingClientes = true;
+    const data = await this.supabaseService.fetchClientes();
+    if (data) this.clientes = data;
+    this.isLoadingClientes = false;
+  }
+
+  prepareNewClient(): void {
+    this.currentClient = { tipo_documento: 'DNI' };
+    this.isEditingClient = false;
+  }
+
+  selectClientForEdit(cliente: any): void {
+    this.currentClient = { ...cliente };
+    this.isEditingClient = true;
+  }
+
+  async saveClient(): Promise<void> {
+    if (!this.currentClient.nombres && !this.currentClient.razon_social) {
+      this.toastService.show('El nombre o razón social es requerido.', { classname: 'bg-danger text-light' });
+      return;
+    }
+
+    const promise = this.isEditingClient
+      ? this.supabaseService.updateCliente(this.currentClient.id, this.currentClient)
+      : this.supabaseService.createCliente(this.currentClient);
+
+    const { error } = await promise;
+
+    if (error) {
+      this.toastService.show(`Error al ${this.isEditingClient ? 'actualizar' : 'crear'} el cliente.`, { classname: 'bg-danger text-light' });
+    } else {
+      this.toastService.show(`Cliente ${this.isEditingClient ? 'actualizado' : 'creado'}.`, { classname: 'bg-success text-light' });
+    }
+
+    this.cancelEditClient();
+    this.getClientes();
+  }
+
+  async deleteClient(id: string): Promise<void> {
+    if (confirm('¿Estás seguro de que deseas eliminar este cliente?')) {
+      const { error } = await this.supabaseService.deleteCliente(id);
+      if (error) {
+        this.toastService.show('Error al eliminar el cliente.', { classname: 'bg-danger text-light' });
+      } else {
+        this.toastService.show('Cliente eliminado.', { classname: 'bg-info text-light' });
+        this.getClientes();
+      }
+    }
+  }
+
+  cancelEditClient(): void {
+    this.currentClient = {};
+    this.isEditingClient = false;
+  }
+
+  // ============== LÓGICA PARA PRODUCTOS ==============
+  async getProductos(): Promise<void> {
+    this.isLoadingProductos = true;
+    const data = await this.supabaseService.fetchProductos();
+    if (data) this.productos = data;
+    this.isLoadingProductos = false;
+  }
+
+  prepareNewProduct(): void {
+    this.currentProduct = { unidad: 'unidad' };
+    this.isEditingProduct = false;
+  }
+
+  selectProductForEdit(producto: any): void {
+    this.currentProduct = { ...producto };
+    this.isEditingProduct = true;
+  }
+
+  async saveProduct(): Promise<void> {
+    if (!this.currentProduct.descripcion) {
+      this.toastService.show('La descripción es requerida.', { classname: 'bg-danger text-light' });
+      return;
+    }
+
+    // Aquí necesitaremos funciones en tu SupabaseService (las crearemos si no existen)
+    const promise = this.isEditingProduct
+      ? this.supabaseService.supabase.from('productos').update(this.currentProduct).eq('id', this.currentProduct.id)
+      : this.supabaseService.supabase.from('productos').insert(this.currentProduct);
+
+    const { error } = await promise;
+
+    if (error) {
+      this.toastService.show(`Error al ${this.isEditingProduct ? 'actualizar' : 'crear'} el producto.`, { classname: 'bg-danger text-light' });
+    } else {
+      this.toastService.show(`Producto ${this.isEditingProduct ? 'actualizado' : 'creado'}.`, { classname: 'bg-success text-light' });
+    }
+
+    this.cancelEditProduct();
+    this.getProductos();
+  }
+
+  async deleteProduct(id: string): Promise<void> {
+    if (confirm('¿Estás seguro de que deseas eliminar este producto?')) {
+      const { error } = await this.supabaseService.supabase.from('productos').delete().eq('id', id);
+      if (error) {
+        this.toastService.show('Error al eliminar el producto.', { classname: 'bg-danger text-light' });
+      } else {
+        this.toastService.show('Producto eliminado.', { classname: 'bg-info text-light' });
+        this.getProductos();
+      }
+    }
+  }
+
+  cancelEditProduct(): void {
+    this.currentProduct = {};
+    this.isEditingProduct = false;
+  }
+}
