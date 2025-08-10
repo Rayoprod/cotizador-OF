@@ -151,6 +151,7 @@ export class QuoteCreator implements OnInit {
         incluir_igv: this.incluirIGV,
         entrega_en_obra: this.entregaEnObra
       };
+      await this.pdfService.cargarFirma();
 
       const { data: cotizacionGuardada, error: errorCotizacion } = await this.supabaseService.supabase
         .from('cotizaciones')

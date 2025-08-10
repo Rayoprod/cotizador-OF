@@ -7,9 +7,33 @@ import { CotizacionData } from '../models/cotizacion.model';
   providedIn: 'root'
 })
 export class PdfService {
+  private firmaBase64: string | null = null; // Para guardar la imagen cargada
 
   constructor() { }
+async cargarFirma(): Promise<void> {
+    // Si ya la cargamos antes, no hacemos nada
+    if (this.firmaBase64) {
+      return;
+    }
 
+    try {
+      // Lee la imagen desde la carpeta assets
+      const response = await fetch('assets/FIRMA_MARIALUZ.png'); // <-- CAMBIA ESTO por el nombre de tu imagen
+      const blob = await response.blob();
+      const reader = new FileReader();
+
+      // La convertimos a Base64 y la guardamos en la variable
+      return new Promise(resolve => {
+        reader.onloadend = () => {
+          this.firmaBase64 = reader.result as string;
+          resolve();
+        };
+        reader.readAsDataURL(blob);
+      });
+    } catch (error) {
+      console.error("Error al cargar la imagen de la firma:", error);
+    }
+  }
   private formatCurrency(value: number | null): string {
     const formatter = new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' });
     return formatter.format(value || 0).replace('PEN', 'S/ ');
@@ -44,6 +68,7 @@ export class PdfService {
         const rightMargin = 195;
         const primaryColor = '#212529';
         const secondaryColor = '#6c757d';
+
         doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(primaryColor);
         doc.text('ELECTROFERRETERO "W&M"', leftMargin, 15);
         doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(primaryColor);
@@ -95,7 +120,14 @@ export class PdfService {
         doc.text("* CCI. BCP: 00219412058787903595", 15, footerY + 8);
         doc.setDrawColor(primaryColor);
         doc.line(140, pageHeight - 15, 195, pageHeight - 15);
-        doc.setFontSize(8); doc.text("FIRMA", 167.5, pageHeight - 11, { align: 'center' });
+        if (this.firmaBase64) {
+          const anchoImagen = 55;
+          const altoImagen = 15;
+          const xPosicion = 167.5 - (anchoImagen / 2); // Para centrar la imagen
+          const yPosicion = pageHeight - 15 - altoImagen; // Posiciona la imagen justo encima de la línea
+
+          doc.addImage(this.firmaBase64, 'PNG', xPosicion, yPosicion, anchoImagen, altoImagen);
+        }
         doc.setFontSize(8); doc.setTextColor(secondaryColor);
         doc.text('Página ' + data.pageNumber + ' de ' + pageCount, rightMargin, pageHeight - 10, { align: 'right' });
       },
