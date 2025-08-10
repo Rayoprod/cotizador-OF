@@ -65,28 +65,39 @@ export class QuoteCreator implements OnInit {
   }
 
 
-  searchClientes: OperatorFunction<string, readonly any[]> = (text$: Observable<string>) =>
-    text$.pipe(
-      debounceTime(200),
-      distinctUntilChanged(),
-      map(term =>
-        term.length < 2
-          ? []
-          : this.clientes.filter(c => {
-            const fullName = `${c.nombres || ''} ${c.apellido_paterno || ''} ${c.apellido_materno || ''}`.toLowerCase();
-            return fullName.includes(term.toLowerCase());
-          }).slice(0, 10)
-      )
-    );
+  // --- Lógica de Buscador de Clientes ---
+searchClientes: OperatorFunction<string, readonly any[]> = (text$: Observable<string>) =>
+  text$.pipe(
+    debounceTime(200),
+    distinctUntilChanged(),
+    map(term =>
+      term.length < 2
+      ? []
+      : this.clientes.filter(c => {
+          // Buscamos tanto en el nombre completo como en la razón social
+          const nombreCompleto = `${c.nombres || ''} ${c.apellido_paterno || ''} ${c.apellido_materno || ''}`.toLowerCase();
+          const razonSocial = (c.razon_social || '').toLowerCase();
+          return nombreCompleto.includes(term.toLowerCase()) || razonSocial.includes(term.toLowerCase());
+        }).slice(0, 10)
+    )
+  );
 
-  clienteFormatter = (cliente: any): string => `${cliente.nombres} ${cliente.apellido_paterno}`;
-
-  seleccionarCliente(evento: NgbTypeaheadSelectItemEvent): void {
-    evento.preventDefault();
-    const clienteSeleccionado = evento.item;
-    this.cliente = this.clienteFormatter(clienteSeleccionado);
-    this.selectedClientId = clienteSeleccionado.id;
+// Esta es la función clave que solucionará el "undefined undefined"
+clienteFormatter = (cliente: any): string => {
+  if (!cliente) {
+    return '';
   }
+  // Si tiene razón social, la usamos. Si no, usamos nombres y apellidos.
+  return cliente.razon_social || `${cliente.nombres || ''} ${cliente.apellido_paterno || ''}`.trim();
+};
+
+seleccionarCliente(evento: NgbTypeaheadSelectItemEvent): void {
+  evento.preventDefault();
+  const clienteSeleccionado = evento.item;
+  // Usamos el mismo formateador para asegurarnos de que se muestre correctamente
+  this.cliente = this.clienteFormatter(clienteSeleccionado);
+  this.selectedClientId = clienteSeleccionado.id;
+}
 
   private _generarNumeroCotizacion(): string {
     const now = new Date();
