@@ -58,8 +58,8 @@ export class QuoteCreator implements OnInit {
       distinctUntilChanged(),
       map(term =>
         term.length < 2
-        ? []
-        : this.clientes.filter(c => {
+          ? []
+          : this.clientes.filter(c => {
             const nombreCompleto = `${c.nombres || ''} ${c.apellido_paterno || ''} ${c.apellido_materno || ''}`.toLowerCase();
             const razonSocial = (c.razon_social || '').toLowerCase();
             return nombreCompleto.includes(term.toLowerCase()) || razonSocial.includes(term.toLowerCase());
@@ -73,10 +73,10 @@ export class QuoteCreator implements OnInit {
   };
 
   seleccionarCliente(evento: NgbTypeaheadSelectItemEvent): void {
-  const clienteSeleccionado = evento.item;
-  this.cliente = this.clienteFormatter(clienteSeleccionado); // Para mostrar en PDF
-  this.selectedClientId = clienteSeleccionado.id; // Para guardar en BD
-}
+    const clienteSeleccionado = evento.item;
+    this.cliente = this.clienteFormatter(clienteSeleccionado); // Para mostrar en PDF
+    this.selectedClientId = clienteSeleccionado.id; // Para guardar en BD
+  }
 
   // --- Lógica de Items (CORREGIDA) ---
   addItem(): void {
@@ -95,12 +95,12 @@ export class QuoteCreator implements OnInit {
   }
 
   onProductSelect(event: NgbTypeaheadSelectItemEvent, item: QuoteItem): void {
-  const productoSeleccionado = event.item;
-  item.descripcion = productoSeleccionado.descripcion; // Para PDF
-  item.unidad = productoSeleccionado.unidad;
-  item.precioUnitario = productoSeleccionado.precio_unitario_base;
-  item.producto_id = productoSeleccionado.id; // Para BD
-}
+    const productoSeleccionado = event.item;
+    item.descripcion = productoSeleccionado.descripcion; // Para PDF
+    item.unidad = productoSeleccionado.unidad;
+    item.precioUnitario = productoSeleccionado.precio_unitario_base;
+    item.producto_id = productoSeleccionado.id; // Para BD
+  }
 
   searchProductos: OperatorFunction<string, readonly any[]> = (text$: Observable<string>) =>
     text$.pipe(
@@ -177,18 +177,54 @@ export class QuoteCreator implements OnInit {
       if (errorItems) throw errorItems;
 
       // 4. Generar el PDF
+      type ProductoDescripcion = {
+        descripcion?: string;
+        nombre?: string;
+        [key: string]: any;
+      };
+
+      // antes de llamar a pdfService.generarCotizacionPDF(...)
+      const clienteParaPDF =
+        typeof this.cliente === 'object' && this.cliente !== null
+          ? this.clienteFormatter(this.cliente)
+          : String(this.cliente || '');
+
+
+      const itemsParaPDF = this.items.map(it => {
+        let descripcion = it.descripcion;
+
+        if (typeof descripcion === 'object' && descripcion !== null) {
+          const descObj = descripcion as ProductoDescripcion;
+          descripcion =
+            descObj.descripcion ||
+            descObj.nombre ||
+            JSON.stringify(descObj);
+        }
+
+        return {
+          ...it,
+          descripcion: String(descripcion || ''),
+          cantidad: it.cantidad,
+          precioUnitario: it.precioUnitario,
+        };
+      });
+
+
       const datosParaPDF: CotizacionData = {
         numeroCotizacion: this.numeroCotizacion,
-        cliente: this.cliente, // Pasamos el nombre del cliente (string)
+        cliente: clienteParaPDF,
         fecha: this.fecha,
-        items: this.items, // Pasamos los items con su descripción (string)
+        items: itemsParaPDF,
         subtotal: this.subtotal,
         igv: this.igv,
         total: this.total,
         incluirIGV: this.incluirIGV,
         entregaEnObra: this.entregaEnObra
       };
+
+      console.log('datosParaPDF (final):', datosParaPDF);
       this.pdfService.generarCotizacionPDF(datosParaPDF);
+
       this.toastService.show('PDF generado y cotización guardada exitosamente.', { classname: 'bg-success text-light' });
 
     } catch (error: any) {
