@@ -30,7 +30,7 @@
       <tbody>
   <tr *ngFor="let cot of cotizaciones">
     <td><strong>{{ cot.numero_cotizacion }}</strong></td>
-    <td>{{ formatCliente(cot.clientes) }}</td>  <td>{{ cot.fecha }}</td>
+<td>{{ cot.cliente }}</td>    <td>{{ cot.fecha }}</td>
     <td class="text-end">{{ cot.total | currency:'S/ ' }}</td>
     <td class="text-center">
       <button class="btn btn-sm btn-outline-primary" (click)="verPDF(cot)">

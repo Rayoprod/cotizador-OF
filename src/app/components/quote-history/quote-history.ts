@@ -4,12 +4,11 @@ import { SupabaseService } from '../../services/supabase';
 import { PdfService } from '../../services/pdf';
 import { CotizacionData, QuoteItem } from '../../models/cotizacion.model';
 
-// Interfaz para la data que recibimos de la BD
+// Interfaz simple que coincide con la tabla 'cotizaciones'
 export interface CotizacionGuardada {
   id: number;
-  created_at: string;
   numero_cotizacion: string;
-  cliente: string; // El nombre del cliente es un texto
+  cliente: string; // El cliente es solo un texto
   fecha: string;
   items: QuoteItem[]; // Los items vienen en el JSON
   total: number;
@@ -46,7 +45,7 @@ export class QuoteHistoryComponent implements OnInit {
   }
 
   async verPDF(cotizacion: CotizacionGuardada): Promise<void> {
-    // La data ya viene en el formato correcto para el PDF, es más simple
+    // La data ya viene en el formato correcto para el PDF
     const datosParaPDF: CotizacionData = {
       numeroCotizacion: cotizacion.numero_cotizacion,
       cliente: cotizacion.cliente,
