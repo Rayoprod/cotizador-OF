@@ -22,7 +22,8 @@ import { CotizacionData, QuoteItem } from '../../models/cotizacion.model';
   styleUrls: ['./quote-creator.scss']
 })
 export class QuoteCreator implements OnInit {
-  numeroCotizacion: string = '';
+
+  numeroCotizacion: string = 'Cargando...'; // Valor inicial mientras espera
   cliente: any = null; // Cambiamos a 'any' para manejar el objeto temporalmente
   selectedClientId: string | null = null;
   fecha: string = new Date().toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -38,12 +39,17 @@ export class QuoteCreator implements OnInit {
   private pdfService = inject(PdfService);
 
   constructor(private cdr: ChangeDetectorRef) {
-    this.numeroCotizacion = this._generarNumeroCotizacion();
     this.addItem();
   }
 
   async ngOnInit(): Promise<void> {
+
+    // La primera acción ahora es obtener el número de cotización
+  this.numeroCotizacion = await this.supabaseService.getNextCotizacionNumber();
+  this.cdr.detectChanges(); // Actualizamos la vista con el nuevo número
     const [clientesData, productosData] = await Promise.all([
+
+
       this.supabaseService.fetchClientes(),
       this.supabaseService.fetchProductos()
     ]);
@@ -188,15 +194,5 @@ export class QuoteCreator implements OnInit {
   }
 }
 
-  // --- Funciones Privadas ---
-  private _generarNumeroCotizacion(): string {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const seconds = String(now.getSeconds()).padStart(2, '0');
-    return `COT-${year}${month}${day}-${hours}${minutes}${seconds}`;
-  }
+  
 }

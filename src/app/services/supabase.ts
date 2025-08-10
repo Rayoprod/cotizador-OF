@@ -64,5 +64,15 @@ export class SupabaseService {
     }
     return data;
   }
+
+
+  async getNextCotizacionNumber() {
+  const { data, error } = await this.supabase.rpc('obtener_siguiente_numero_cotizacion');
+  if (error) {
+    console.error('Error al obtener el número de cotización:', error);
+    return `COT-ERROR-${Date.now()}`; // Un número de respaldo en caso de error
+  }
+  return data;
+}
 }
 
