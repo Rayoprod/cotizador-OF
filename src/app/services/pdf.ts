@@ -119,6 +119,7 @@ async cargarFirma(): Promise<void> {
         doc.text("* Cta. Banco de Credito: 194-20587879-0-35", 15, footerY + 4);
         doc.text("* CCI. BCP: 00219412058787903595", 15, footerY + 8);
         doc.setDrawColor(primaryColor);
+        doc.line(140, pageHeight - 15, 195, pageHeight - 15);
         if (this.firmaBase64) {
           const anchoImagen = 55;
           const altoImagen = 0;
