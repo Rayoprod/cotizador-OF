@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectorRef, OnInit } from '@angular/core';
+import { Component, inject, ChangeDetectorRef, OnInit, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule, RouterOutlet } from '@angular/router';
 import { NgbCollapseModule } from '@ng-bootstrap/ng-bootstrap';
@@ -20,6 +20,8 @@ export class App implements OnInit {
   private supabaseService = inject(SupabaseService);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
+  private zone = inject(NgZone); // <-- AÑADE ESTA LÍNEA
+
 
   ngOnInit(): void {
     // Escuchamos CUALQUIER cambio en la sesión
@@ -35,5 +37,10 @@ export class App implements OnInit {
     await this.supabaseService.signOut();
     // Navegamos a login. El onAuthStateChange se encargará de ocultar el menú.
     this.router.navigate(['/login']);
+  }
+  toggleMenu(): void {
+    this.zone.run(() => {
+      this.isMenuCollapsed = !this.isMenuCollapsed;
+    });
   }
 }
