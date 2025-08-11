@@ -1,7 +1,7 @@
 import { Component, inject, ChangeDetectorRef, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule, RouterOutlet } from '@angular/router';
-import { NgbCollapseModule } from '@ng-bootstrap/ng-bootstrap'; // <-- Asegúrate de importar esto
+import { NgbCollapseModule } from '@ng-bootstrap/ng-bootstrap';
 import { ToastsComponent } from './components/toasts/toasts';
 import { SupabaseService } from './services/supabase';
 import { AuthChangeEvent, Session } from '@supabase/supabase-js';
@@ -14,13 +14,13 @@ import { AuthChangeEvent, Session } from '@supabase/supabase-js';
     ToastsComponent,
     CommonModule,
     RouterModule,
-    NgbCollapseModule // <-- Y de que esté aquí
+    NgbCollapseModule
   ],
   templateUrl: './app.html',
   styleUrls: ['./app.scss']
 })
-export class App implements OnInit {
-  isMenuCollapsed = true; // <-- Esta es la variable que controla el menú
+export class AppComponent implements OnInit {
+  isMenuCollapsed = true;
   isLoggedIn = false;
 
   private supabaseService = inject(SupabaseService);
