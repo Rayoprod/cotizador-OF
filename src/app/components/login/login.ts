@@ -1,9 +1,9 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { SupabaseService } from '../../services/supabase';
 import { ToastService } from '../../services/toast';
+import { FormsModule } from '@angular/forms'; // <-- 1. IMPORTA FormsModule
 
 @Component({
   selector: 'app-login',
