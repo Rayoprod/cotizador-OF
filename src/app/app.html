@@ -2,22 +2,30 @@
   <div class="container-fluid">
     <a class="navbar-brand" routerLink="/">Cotizador W&M</a>
 
-    <button class="navbar-toggler" type="button" (click)="isMenuCollapsed = !isMenuCollapsed" aria-controls="navbarNav" [attr.aria-expanded]="!isMenuCollapsed">
+    <button class="navbar-toggler" type="button" (click)="isMenuCollapsed = !isMenuCollapsed" aria-controls="navbarNav"
+      [attr.aria-expanded]="!isMenuCollapsed">
       <span class="navbar-toggler-icon"></span>
     </button>
 
     <div class="collapse navbar-collapse" [ngbCollapse]="isMenuCollapsed" id="navbarNav">
       <ul class="navbar-nav">
         <li class="nav-item">
-          <a class="nav-link" routerLink="/crear-cotizacion" routerLinkActive="active" (click)="isMenuCollapsed = true">Crear Cotización</a>
+          <a class="nav-link" routerLink="/crear-cotizacion" routerLinkActive="active"
+            (click)="isMenuCollapsed = true">Crear Cotización</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" routerLink="/historial" routerLinkActive="active" (click)="isMenuCollapsed = true">Historial</a>
+          <a class="nav-link" routerLink="/historial" routerLinkActive="active"
+            (click)="isMenuCollapsed = true">Historial</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" routerLink="/admin" routerLinkActive="active" (click)="isMenuCollapsed = true">Administración</a>
+          <a class="nav-link" routerLink="/admin" routerLinkActive="active"
+            (click)="isMenuCollapsed = true">Administración</a>
         </li>
+
       </ul>
+      <div class="d-flex ms-auto">
+        <button class="btn btn-outline-secondary" (click)="signOut()">Cerrar Sesión</button>
+      </div>
     </div>
   </div>
 </nav>
