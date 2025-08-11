@@ -1,13 +1,20 @@
+// En app.routes.ts
 import { Routes } from '@angular/router';
 import { QuoteCreator } from './components/quote-creator/quote-creator';
-import { QuoteHistoryComponent } from './components/quote-history/quote-history'; // <-- IMPORTA EL NUEVO COMPONENTE
+import { QuoteHistoryComponent } from './components/quote-history/quote-history';
 import { AdministradorgeneralComponent } from './components/administradorgeneral/administradorgeneral';
+import { Login } from './components/login/login'; // <-- Importa el login
+import { authGuard } from './services/auth-guard'; // <-- Importa el guardia
 
 export const routes: Routes = [
-  { path: '', redirectTo: '/crear-cotizacion', pathMatch: 'full' },
-  { path: 'crear-cotizacion', component: QuoteCreator, title: 'Crear Cotización' },
-  { path: 'historial', component: QuoteHistoryComponent, title: 'Historial' },
-    { path: 'admin', component: AdministradorgeneralComponent, title: 'Administración' }
+  // La página de login es pública
+  { path: 'login', component: Login, title: 'Iniciar Sesión' },
 
-  // AÑADE ESTA LÍNEA
+  // Las demás páginas ahora están protegidas por el guardia
+  { path: 'crear-cotizacion', component: QuoteCreator, title: 'Crear Cotización', canActivate: [authGuard] },
+  { path: 'historial', component: QuoteHistoryComponent, title: 'Historial', canActivate: [authGuard] },
+  { path: 'admin', component: AdministradorgeneralComponent, title: 'Administración', canActivate: [authGuard] },
+
+  // Redirección por defecto
+  { path: '', redirectTo: '/crear-cotizacion', pathMatch: 'full' }
 ];

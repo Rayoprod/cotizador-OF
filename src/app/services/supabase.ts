@@ -86,5 +86,21 @@ export class SupabaseService {
   deleteProducto(id: string) {
     return this.supabase.from('productos').delete().eq('id', id);
   }
+  // En supabase.service.ts
+
+  // Función para iniciar sesión
+  signIn(credentials: { email: string, password: string }) {
+    return this.supabase.auth.signInWithPassword(credentials);
+  }
+
+  // Función para obtener la sesión actual
+  getSession() {
+    return this.supabase.auth.getSession();
+  }
+
+  // Función para cerrar sesión
+  signOut() {
+    return this.supabase.auth.signOut();
+  }
 
 } // <-- La clase termina aquí, correctamente
