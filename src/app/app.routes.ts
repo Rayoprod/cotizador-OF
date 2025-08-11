@@ -3,12 +3,12 @@ import { Routes } from '@angular/router';
 import { QuoteCreator } from './components/quote-creator/quote-creator';
 import { QuoteHistoryComponent } from './components/quote-history/quote-history';
 import { AdministradorgeneralComponent } from './components/administradorgeneral/administradorgeneral';
-import { Login } from './components/login/login'; // <-- Importa el login
+import { LoginComponent } from './components/login/login'; // <-- Importa el login
 import { authGuard } from './services/auth-guard'; // <-- Importa el guardia
 
 export const routes: Routes = [
   // La página de login es pública
-  { path: 'login', component: Login, title: 'Iniciar Sesión' },
+  { path: 'login', component: LoginComponent, title: 'Iniciar Sesión' },
 
   // Las demás páginas ahora están protegidas por el guardia
   { path: 'crear-cotizacion', component: QuoteCreator, title: 'Crear Cotización', canActivate: [authGuard] },

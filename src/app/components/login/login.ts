@@ -1,11 +1,44 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
+import { SupabaseService } from '../../services/supabase';
+import { ToastService } from '../../services/toast';
 
 @Component({
   selector: 'app-login',
-  imports: [],
+  standalone: true,
+  imports: [CommonModule, FormsModule],
   templateUrl: './login.html',
-  styleUrl: './login.scss'
+  styleUrls: ['./login.scss']
 })
-export class Login {
+export class LoginComponent {
+  public credentials = { email: '', password: '' };
+  public isLoading = false;
 
+  private supabaseService = inject(SupabaseService);
+  private router = inject(Router);
+  private toastService = inject(ToastService);
+
+  async login(): Promise<void> {
+    if (!this.credentials.email || !this.credentials.password) {
+      this.toastService.show('Por favor, ingresa tu email y contraseña.', { classname: 'bg-warning' });
+      return;
+    }
+
+    this.isLoading = true;
+    try {
+      const { error } = await this.supabaseService.signIn(this.credentials);
+
+      if (error) {
+        throw error;
+      }
+      // Si el login es exitoso, redirige al creador de cotizaciones
+      this.router.navigate(['/crear-cotizacion']);
+    } catch (error: any) {
+      this.toastService.show(error.message || 'Error al iniciar sesión.', { classname: 'bg-danger text-light' });
+    } finally {
+      this.isLoading = false;
+    }
+  }
 }
