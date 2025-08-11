@@ -19,7 +19,7 @@ import { AuthChangeEvent, Session } from '@supabase/supabase-js';
   templateUrl: './app.html',
   styleUrls: ['./app.scss']
 })
-export class AppComponent implements OnInit {
+export class App implements OnInit {
   isMenuCollapsed = true;
   isLoggedIn = false;
 
