@@ -1,31 +1,36 @@
-import { Component, signal,ChangeDetectorRef, inject, OnInit } from '@angular/core';
-import { RouterOutlet, RouterModule } from '@angular/router'; // <-- AÑADIR RouterModule
-import { ToastsComponent } from "./components/toasts/toasts";
+import { Component, inject, ChangeDetectorRef, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { NgbCollapseModule } from '@ng-bootstrap/ng-bootstrap'; // <-- IMPORTA ESTO
-import { Router } from '@angular/router';
+import { Router, RouterModule, RouterOutlet } from '@angular/router';
+import { NgbCollapseModule } from '@ng-bootstrap/ng-bootstrap'; // <-- Asegúrate de importar esto
+import { ToastsComponent } from './components/toasts/toasts';
 import { SupabaseService } from './services/supabase';
+import { AuthChangeEvent, Session } from '@supabase/supabase-js';
+
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, ToastsComponent,CommonModule,RouterModule,NgbCollapseModule],
+  standalone: true,
+  imports: [
+    RouterOutlet,
+    ToastsComponent,
+    CommonModule,
+    RouterModule,
+    NgbCollapseModule // <-- Y de que esté aquí
+  ],
   templateUrl: './app.html',
-  styleUrl: './app.scss'
+  styleUrls: ['./app.scss']
 })
-
-
-export class App implements OnInit {
-  isMenuCollapsed = true;
-  isLoggedIn = false; // <-- Nueva propiedad para controlar la visibilidad
+export class AppComponent implements OnInit {
+  isMenuCollapsed = true; // <-- Esta es la variable que controla el menú
+  isLoggedIn = false;
 
   private supabaseService = inject(SupabaseService);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
 
   ngOnInit(): void {
-    // Escuchamos los cambios en la sesión de autenticación
-    this.supabaseService.supabase.auth.onAuthStateChange((event, session) => {
-      this.isLoggedIn = !!session; // Si hay sesión, isLoggedIn es true. Si no, es false.
-      this.cdr.detectChanges(); // Forzamos la detección de cambios
+    this.supabaseService.supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
+      this.isLoggedIn = !!session;
+      this.cdr.detectChanges();
     });
   }
 
