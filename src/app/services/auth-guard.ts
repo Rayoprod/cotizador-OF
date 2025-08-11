@@ -10,9 +10,9 @@ export const authGuard: CanActivateFn = async (route, state) => {
 
   if (data.session) {
     return true; // Si hay sesión, déjalo pasar
-  } else {
-    // Si no hay sesión, redirígelo a la página de login
-    router.navigate(['/login']);
-    return false;
   }
+
+  // Si no hay sesión, redirígelo a la página de login
+  router.navigate(['/login']);
+  return false;
 };
