@@ -5,6 +5,8 @@ import { NgbCollapseModule } from '@ng-bootstrap/ng-bootstrap';
 import { ToastsComponent } from './components/toasts/toasts';
 import { SupabaseService } from './services/supabase';
 import { AuthChangeEvent, Session } from '@supabase/supabase-js';
+import { SwUpdate } from '@angular/service-worker'; // <-- 1. Importar SwUpdate
+
 
 @Component({
   selector: 'app-root',
@@ -21,6 +23,8 @@ export class App implements OnInit {
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
   private zone = inject(NgZone); // <-- AÑADE ESTA LÍNEA
+    private swUpdate = inject(SwUpdate); // <-- 2. Inyectar SwUpdate
+
 
 
   ngOnInit(): void {
@@ -31,7 +35,21 @@ export class App implements OnInit {
       // Forzamos a Angular a que actualice la vista con el nuevo valor
       this.cdr.detectChanges();
     });
+
+     // --- LÓGICA PARA ACTUALIZACIONES DE LA PWA ---
+    if (this.swUpdate.isEnabled) {
+      this.swUpdate.versionUpdates.subscribe(evt => {
+        if (evt.type === 'VERSION_READY') {
+          if (confirm("Nueva versión disponible. ¿Cargar ahora?")) {
+            // Recarga la página para obtener la última versión.
+            window.location.reload();
+          }
+        }
+      });
+    }
+  
   }
+
 
   async signOut(): Promise<void> {
     await this.supabaseService.signOut();
