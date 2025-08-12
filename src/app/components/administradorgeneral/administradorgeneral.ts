@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, TemplateRef } from '@angular/core';
+import { Component, inject, OnInit, TemplateRef, NgZone } from '@angular/core'; // <-- Añade NgZone
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseService } from '../../services/supabase';
@@ -16,6 +16,8 @@ export class AdministradorgeneralComponent implements OnInit {
   private supabaseService = inject(SupabaseService);
   private toastService = inject(ToastService);
   private modalService = inject(NgbModal); // <-- Servicio para los modales
+    private zone = inject(NgZone); // <-- Inyéctalo aquí
+
 
   public vistaActual: 'clientes' | 'productos' = 'clientes';
 
@@ -37,8 +39,10 @@ export class AdministradorgeneralComponent implements OnInit {
   }
 
   cambiarVista(vista: 'clientes' | 'productos'): void {
+  this.zone.run(() => {
     this.vistaActual = vista;
-  }
+  });
+}
 
   // ============== LÓGICA PARA CLIENTES ==============
   async getClientes(): Promise<void> {
