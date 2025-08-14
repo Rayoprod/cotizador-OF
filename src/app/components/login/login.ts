@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core'; // <-- Añade OnInit
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { SupabaseService } from '../../services/supabase';
@@ -12,22 +12,16 @@ import { FormsModule } from '@angular/forms'; // <-- 1. IMPORTA FormsModule
   templateUrl: './login.html',
   styleUrls: ['./login.scss']
 })
-export class LoginComponent implements OnInit {
+export class LoginComponent  {
   public credentials = { email: '', password: '' };
   public isLoading = false;
 
   private supabaseService = inject(SupabaseService);
   private router = inject(Router);
   private toastService = inject(ToastService);
-  ngOnInit(): void {
-    // ESTA ES LA LÍNEA CLAVE
-    // Al cargar el componente de login, nos aseguramos de cerrar cualquier sesión activa.
-    this.supabaseService.signOut();
-  }
 
   async login(): Promise<void> {
     if (!this.credentials.email || !this.credentials.password) {
-
       this.toastService.show('Por favor, ingresa tu email y contraseña.', { classname: 'bg-warning' });
       return;
     }

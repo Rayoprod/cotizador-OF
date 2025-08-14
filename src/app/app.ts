@@ -51,15 +51,18 @@ export class App implements OnInit {
   }
 
 
+  // En app.component.ts
+
   async signOut(): Promise<void> {
     if (confirm('¿Estás seguro de que deseas cerrar la sesión?')) {
+      // 1. Cierra la sesión en Supabase
       await this.supabaseService.signOut();
 
-      // Forzamos el estado a 'desconectado' inmediatamente
+      // 2. Actualiza el estado del componente INMEDIATAMENTE
       this.isLoggedIn = false;
 
-      // Forzamos una recarga completa de la página hacia el login
-      window.location.href = '/login';
+      // 3. Navega a la página de login AHORA que el estado es correcto
+      this.router.navigate(['/login']);
     }
   }
   toggleMenu(): void {
