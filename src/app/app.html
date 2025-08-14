@@ -1,4 +1,4 @@
-<nav *ngIf="isLoggedIn" class="navbar navbar-expand-lg navbar-dark bg-dark">
+<nav *ngIf="isLoggedIn" class="navbar navbar-expand-lg navbar-light " background-color: #e3f2fd;>
   <div class="container-fluid">
     <a class="navbar-brand" routerLink="/" (click)="isMenuCollapsed = true">Cotizador W&M</a>
 
@@ -21,7 +21,7 @@
         </li>
       </ul>
       <div class="d-flex">
-        <button class="btn btn-outline-secondary" (click)="signOut()">Cerrar Sesión</button>
+        <button class="btn btn-outline-danger" (click)="signOut()">Cerrar Sesión</button>
       </div>
     </div>
   </div>
