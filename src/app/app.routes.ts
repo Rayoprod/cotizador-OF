@@ -5,10 +5,12 @@ import { QuoteHistoryComponent } from './components/quote-history/quote-history'
 import { AdministradorgeneralComponent } from './components/administradorgeneral/administradorgeneral';
 import { LoginComponent } from './components/login/login'; // <-- Importa el login
 import { authGuard } from './services/auth-guard'; // <-- Importa el guardia
+import { publicGuard } from './services/public-guard'; // <-- Asegúrate de importarlo
+
 
 export const routes: Routes = [
   // La página de login es pública
-  { path: 'login', component: LoginComponent, title: 'Iniciar Sesión' },
+  { path: 'login', component: LoginComponent, title: 'Iniciar Sesión', canActivate: [publicGuard] },
 
   // Las demás páginas ahora están protegidas por el guardia
   { path: 'crear-cotizacion', component: QuoteCreator, title: 'Crear Cotización', canActivate: [authGuard] },

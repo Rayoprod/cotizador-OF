@@ -47,15 +47,18 @@ export class App implements OnInit {
         }
       });
     }
-  
+
   }
 
 
   async signOut(): Promise<void> {
+  // Usamos window.confirm() para mostrar una alerta nativa del navegador
+  if (confirm('¿Estás seguro de que deseas cerrar la sesión?')) {
     await this.supabaseService.signOut();
-    // Navegamos a login. El onAuthStateChange se encargará de ocultar el menú.
     this.router.navigate(['/login']);
   }
+  // Si el usuario hace clic en "Cancelar", no pasa nada.
+}
   toggleMenu(): void {
     this.zone.run(() => {
       this.isMenuCollapsed = !this.isMenuCollapsed;
