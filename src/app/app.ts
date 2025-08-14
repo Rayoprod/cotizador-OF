@@ -23,7 +23,7 @@ export class App implements OnInit {
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
   private zone = inject(NgZone); // <-- AÑADE ESTA LÍNEA
-    private swUpdate = inject(SwUpdate); // <-- 2. Inyectar SwUpdate
+  private swUpdate = inject(SwUpdate); // <-- 2. Inyectar SwUpdate
 
 
 
@@ -36,7 +36,7 @@ export class App implements OnInit {
       this.cdr.detectChanges();
     });
 
-     // --- LÓGICA PARA ACTUALIZACIONES DE LA PWA ---
+    // --- LÓGICA PARA ACTUALIZACIONES DE LA PWA ---
     if (this.swUpdate.isEnabled) {
       this.swUpdate.versionUpdates.subscribe(evt => {
         if (evt.type === 'VERSION_READY') {
@@ -52,13 +52,16 @@ export class App implements OnInit {
 
 
   async signOut(): Promise<void> {
-  // Usamos window.confirm() para mostrar una alerta nativa del navegador
-  if (confirm('¿Estás seguro de que deseas cerrar la sesión?')) {
-    await this.supabaseService.signOut();
-    this.router.navigate(['/login']);
+    if (confirm('¿Estás seguro de que deseas cerrar la sesión?')) {
+      await this.supabaseService.signOut();
+
+      // Forzamos el estado a 'desconectado' inmediatamente
+      this.isLoggedIn = false;
+
+      // Forzamos una recarga completa de la página hacia el login
+      window.location.href = '/login';
+    }
   }
-  // Si el usuario hace clic en "Cancelar", no pasa nada.
-}
   toggleMenu(): void {
     this.zone.run(() => {
       this.isMenuCollapsed = !this.isMenuCollapsed;
