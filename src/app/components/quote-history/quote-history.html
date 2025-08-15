@@ -18,30 +18,27 @@
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let cot of cotizaciones">
-          <td><strong>{{ cot.numero_cotizacion }}</strong></td>
-          <td>{{ cot.cliente }}</td>
-          <td>{{ cot.fecha }}</td>
-          <td class="text-end">{{ cot.total | currency:'S/ ' }}</td>
-          <td class="text-center">
-            <button class="btn btn-sm btn-outline-primary" (click)="revisarPDFHistorial(cot, confirmationModalHistorial)">
-              Ver PDF
-            </button>
-          </td>
-        </tr>
-      </tbody>
+  <tr *ngFor="let cot of cotizaciones">
+    <td><strong>{{ cot.numero_cotizacion }}</strong></td>
+    <td>{{ cot.cliente }}</td>
+    <td>{{ cot.fecha }}</td>
+    <td class="text-end">{{ cot.total | currency:'S/ ' }}</td>
+    <td class="text-center">
+      <div class="btn-group btn-group-sm" role="group">
+
+        <button class="btn btn-outline-secondary" (click)="verPDF(cot)">
+          {{ isMobile() ? 'Ver' : 'Ver / Descargar' }}
+        </button>
+
+        <button *ngIf="isMobile()" class="btn btn-outline-primary" (click)="compartirPDF(cot)">
+          Compartir
+        </button>
+
+      </div>
+    </td>
+  </tr>
+</tbody>
     </table>
   </div>
 </div>
 
-<ng-template #confirmationModalHistorial let-modal>
-  <div class="modal-body text-center p-4">
-    <h4 class="mb-3">La previsualización se abrió en una nueva pestaña.</h4>
-    <p>El documento ya está guardado. ¿Deseas realizar la acción final?</p>
-
-    <button type="button" class="btn btn-success btn-lg mt-3" (click)="generarPDFDesdeHistorial()">
-      <i class="bi bi-check-circle-fill me-2"></i>
-      {{ isMobile() ? 'Compartir PDF' : 'Descargar PDF Final' }}
-    </button>
-  </div>
-</ng-template>
