@@ -110,9 +110,26 @@
       </div>
     </div>
     <div class="card-footer text-center p-3">
-      <button class="btn btn-success btn-lg" (click)="generarPDF()">
-        Generar PDF
-      </button>
-    </div>
+  <button class="btn btn-primary btn-lg" (click)="previsualizarPDF(previewModal)" [disabled]="isGeneratingPreview">
+    <span *ngIf="isGeneratingPreview" class="spinner-border spinner-border-sm"></span>
+    <span *ngIf="!isGeneratingPreview">Previsualizar Cotización</span>
+  </button>
+</div>
   </div>
 </div>
+
+<ng-template #previewModal let-modal>
+  <div class="modal-header">
+    <h4 class="modal-title">Previsualización</h4>
+    <button type="button" class="btn-close" (click)="modal.dismiss()"></button>
+  </div>
+  <div class="modal-body p-0" style="height: 70vh;">
+    <iframe *ngIf="pdfPreviewUrl" [src]="pdfPreviewUrl" width="100%" height="100%" style="border: none;"></iframe>
+  </div>
+  <div class="modal-footer justify-content-between">
+    <button type="button" class="btn btn-secondary" (click)="modal.dismiss()">Cancelar</button>
+    <button type="button" class="btn btn-success" (click)="generarPDF()">
+      <i class="bi bi-check-circle-fill me-2"></i> Guardar y Generar
+    </button>
+  </div>
+</ng-template>

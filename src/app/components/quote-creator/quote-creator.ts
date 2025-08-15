@@ -1,14 +1,14 @@
-import { Component, inject, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectorRef,TemplateRef  } from '@angular/core';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { NgbTypeaheadModule, NgbTypeaheadSelectItemEvent } from '@ng-bootstrap/ng-bootstrap';
 import { Observable, OperatorFunction } from 'rxjs';
 import { debounceTime, distinctUntilChanged, map } from 'rxjs/operators';
 import { ToastService } from '../../services/toast';
 import { SupabaseService } from '../../services/supabase';
 import { PdfService } from '../../services/pdf';
 import { CotizacionData, QuoteItem } from '../../models/cotizacion.model';
-
+import { NgbModal, NgbTypeaheadModule, NgbTypeaheadSelectItemEvent } from '@ng-bootstrap/ng-bootstrap';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 @Component({
   selector: 'app-quote-creator',
   standalone: true,
@@ -32,11 +32,15 @@ export class QuoteCreator implements OnInit {
   incluirIGV: boolean = true;
   entregaEnObra: boolean = false;
   private nextId = 1;
+  public isGeneratingPreview = false;
+  public pdfPreviewUrl: SafeResourceUrl | null = null;
 
   // --- Inyección de Servicios ---
   toastService = inject(ToastService);
   supabaseService = inject(SupabaseService);
   private pdfService = inject(PdfService);
+  private modalService = inject(NgbModal);
+  private sanitizer = inject(DomSanitizer);
 
   constructor(private cdr: ChangeDetectorRef) {
     this.addItem();
@@ -133,23 +137,50 @@ export class QuoteCreator implements OnInit {
     return this.subtotal + this.igv;
   }
 
+ // --- NUEVA FUNCIÓN PARA PREVISUALIZAR ---
+  async previsualizarPDF(content: TemplateRef<any>): Promise<void> {
+    const nombreCliente = this.clienteFormatter(this.cliente);
+    if (!nombreCliente.trim() || this.items.some(item => !this.productoFormatter(item.descripcion).trim())) {
+      this.toastService.show('Completa los datos del cliente y los items antes de previsualizar.', { classname: 'bg-warning' });
+      return;
+    }
+
+    this.isGeneratingPreview = true;
+
+    const datosParaPreview: CotizacionData = {
+      numeroCotizacion: 'COT-PROVISIONAL',
+      cliente: nombreCliente,
+      fecha: this.fecha,
+      items: this.items.map(item => ({ ...item, descripcion: this.productoFormatter(item.descripcion) })),
+      subtotal: this.subtotal,
+      igv: this.igv,
+      total: this.total,
+      incluirIGV: this.incluirIGV,
+      entregaEnObra: this.entregaEnObra
+    };
+
+    await this.pdfService.cargarFirma();
+    const doc = this.pdfService.crearInstanciaPDF(datosParaPreview);
+    const pdfBlob = doc.output('blob');
+
+    const url = URL.createObjectURL(pdfBlob);
+    this.pdfPreviewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
+    this.isGeneratingPreview = false;
+    this.modalService.open(content, { size: 'lg', centered: true, scrollable: true });
+  }
+
   // --- Generación de PDF y Guardado ---
   // En quote-creator.ts
 
-  async generarPDF(): Promise<void> {
-    // ... (Tus validaciones se quedan igual)
-    const nombreCliente = this.clienteFormatter(this.cliente);
-    if (!nombreCliente.trim()) { /* ... error ... */ return; }
-    const itemInvalido = this.items.find(item => !this.productoFormatter(item.descripcion).trim() || (item.cantidad || 0) <= 0 || item.precioUnitario === null);
-    if (itemInvalido) { /* ... error ... */ return; }
-
+    async generarPDF(): Promise<void> {
     try {
-      // 1. OBTENER EL NUEVO NÚMERO DE COTIZACIÓN (AHORA ES EL PRIMER PASO)
+      // 1. Obtiene el número real
       const nuevoNumeroCotizacion = await this.supabaseService.getNextCotizacionNumber();
+      const nombreCliente = this.clienteFormatter(this.cliente);
 
-      // 2. Preparar el objeto para guardar en la BD
+      // 2. Guarda en la base de datos
       const cotizacionParaGuardar = {
-        numero_cotizacion: nuevoNumeroCotizacion, // <-- Usa el número que acabamos de obtener
+        numero_cotizacion: nuevoNumeroCotizacion,
         fecha: this.fecha,
         cliente: nombreCliente,
         items: this.items.map(item => ({
@@ -165,34 +196,41 @@ export class QuoteCreator implements OnInit {
         entrega_en_obra: this.entregaEnObra
       };
 
-      // 3. Guardar en Supabase
-      const { error } = await this.supabaseService.supabase
-        .from('cotizaciones')
-        .insert(cotizacionParaGuardar);
+      const { error } = await this.supabaseService.supabase.from('cotizaciones').insert(cotizacionParaGuardar);
       if (error) throw error;
 
-      // 4. Cargar firma y generar el PDF
-      await this.pdfService.cargarFirma();
+      // 3. Genera y muestra el PDF FINAL
+      const datosParaPDF_final: CotizacionData = {
+  numeroCotizacion: nuevoNumeroCotizacion,
+  cliente: nombreCliente,
+  fecha: this.fecha,
+  items: this.items.map(item => ({ // <-- Creamos una lista limpia para el PDF
+    ...item, // Copiamos todas las propiedades originales (incluyendo el id)
+    descripcion: this.productoFormatter(item.descripcion) // Nos aseguramos de que la descripción sea un texto
+  })),
+  subtotal: this.subtotal,
+  igv: this.igv,
+  total: this.total,
+  incluirIGV: this.incluirIGV,
+  entregaEnObra: this.entregaEnObra
+};
 
-      this.pdfService.generarCotizacionPDF({
-        numeroCotizacion: nuevoNumeroCotizacion, // <-- Usa el mismo número para el PDF
-        cliente: nombreCliente,
-        fecha: this.fecha,
-        items: this.items.map(item => ({
-          ...item,
-          descripcion: this.productoFormatter(item.descripcion)
-        })),
-        subtotal: this.subtotal,
-        igv: this.igv,
-        total: this.total,
-        incluirIGV: this.incluirIGV,
-        entregaEnObra: this.entregaEnObra
-      });
+      const docFinal = this.pdfService.crearInstanciaPDF(datosParaPDF_final);
+
+      if (navigator.share) {
+        const blob = docFinal.output('blob');
+        const file = new File([blob], `Cotizacion-${nuevoNumeroCotizacion}.pdf`, { type: 'application/pdf' });
+        await navigator.share({ files: [file], title: `Cotización ${nuevoNumeroCotizacion}` });
+      } else {
+        docFinal.output('dataurlnewwindow');
+      }
+
+      this.modalService.dismissAll();
       this.toastService.show(`Cotización ${nuevoNumeroCotizacion} guardada.`, { classname: 'bg-success text-light' });
 
     } catch (error: any) {
-      this.toastService.show('Error: No se pudo guardar la cotización.', { classname: 'bg-danger text-light' });
-      console.error('Error al guardar en Supabase:', error.message);
+      this.toastService.show('Error al guardar la cotización.', { classname: 'bg-danger text-light' });
+      console.error('Error:', error.message);
     }
   }
 }

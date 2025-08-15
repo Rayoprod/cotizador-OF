@@ -36,8 +36,15 @@ export class PdfService {
     return formatter.format(value || 0).replace('PEN', 'S/ ');
   }
 
-  // --- INICIO DE LA FUNCIÓN MODIFICADA ---
-  async generarCotizacionPDF(datos: CotizacionData): Promise<void> {
+
+
+
+
+
+
+  // --- INICIO DE LA FUNCIÓN MODIFICADA --
+  crearInstanciaPDF(datos: CotizacionData): jsPDF {
+
     const doc = new jsPDF();
     const head = [['N°', 'Descripción', 'Unidad', 'Cant.', 'P. Unit.', 'Total']];
     const body = datos.items.map((item: any, index: number) => [
@@ -157,21 +164,7 @@ export class PdfService {
     });
 
     // --- NUEVA LÓGICA PARA COMPARTIR O ABRIR EL PDF ---
-    if (navigator.share) {
-      try {
-        const blob = doc.output('blob');
-        const file = new File([blob], `Cotizacion-${datos.numeroCotizacion}.pdf`, { type: 'application/pdf' });
+    return doc;
 
-        await navigator.share({
-          title: `Cotización ${datos.numeroCotizacion}`,
-          text: `Adjunto la cotización para ${datos.cliente}.`,
-          files: [file],
-        });
-      } catch (error) {
-        console.error('Error al intentar compartir:', error);
-      }
-    } else {
-      doc.output('dataurlnewwindow');
-    }
   }
 }
