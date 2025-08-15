@@ -45,20 +45,35 @@ export class QuoteHistoryComponent implements OnInit {
   }
 
   async verPDF(cotizacion: CotizacionGuardada): Promise<void> {
-    // La data ya viene en el formato correcto para el PDF
-    const datosParaPDF: CotizacionData = {
-      numeroCotizacion: cotizacion.numero_cotizacion,
-      cliente: cotizacion.cliente,
-      fecha: cotizacion.fecha,
-      items: cotizacion.items,
-      subtotal: cotizacion.subtotal,
-      igv: cotizacion.igv,
-      total: cotizacion.total,
-      incluirIGV: cotizacion.incluir_igv,
-      entregaEnObra: cotizacion.entrega_en_obra
-    };
+  const datosParaPDF: CotizacionData = {
+    numeroCotizacion: cotizacion.numero_cotizacion,
+    cliente: cotizacion.cliente,
+    fecha: cotizacion.fecha,
+    items: cotizacion.items,
+    subtotal: cotizacion.subtotal,
+    igv: cotizacion.igv,
+    total: cotizacion.total,
+    incluirIGV: cotizacion.incluir_igv,
+    entregaEnObra: cotizacion.entrega_en_obra
+  };
 
-    await this.pdfService.cargarFirma();
-    this.pdfService.generarCotizacionPDF(datosParaPDF);
+  // 1. Carga la firma
+  await this.pdfService.cargarFirma();
+
+  // 2. Crea la instancia del PDF
+  const doc = this.pdfService.crearInstanciaPDF(datosParaPDF);
+
+  // 3. Decide cómo mostrarlo (igual que en el creador de cotizaciones)
+  if (navigator.share) {
+    const blob = doc.output('blob');
+    const file = new File([blob], `Cotizacion-${datosParaPDF.numeroCotizacion}.pdf`, { type: 'application/pdf' });
+
+    await navigator.share({
+      title: `Cotización ${datosParaPDF.numeroCotizacion}`,
+      files: [file],
+    });
+  } else {
+    doc.output('dataurlnewwindow');
   }
+}
 }
