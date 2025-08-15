@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, ChangeDetectorRef,TemplateRef  } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectorRef, TemplateRef } from '@angular/core';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Observable, OperatorFunction } from 'rxjs';
@@ -137,21 +137,23 @@ export class QuoteCreator implements OnInit {
     return this.subtotal + this.igv;
   }
 
- // --- NUEVA FUNCIÓN PARA PREVISUALIZAR ---
-  async previsualizarPDF(content: TemplateRef<any>): Promise<void> {
+
+
+  // --- NUEVA FUNCIÓN PARA PREVISUALIZAR ---
+async revisarPDF(confirmationModal: TemplateRef<any>): Promise<void> {
     const nombreCliente = this.clienteFormatter(this.cliente);
-    if (!nombreCliente.trim() || this.items.some(item => !this.productoFormatter(item.descripcion).trim())) {
-      this.toastService.show('Completa los datos del cliente y los items antes de previsualizar.', { classname: 'bg-warning' });
+    if (!nombreCliente.trim() || this.items.some(item => !this.productoFormatter(item.descripcion).trim() || (item.cantidad || 0) <= 0)) {
+      this.toastService.show('Completa los datos del cliente y los items.', { classname: 'bg-warning' });
       return;
     }
 
-    this.isGeneratingPreview = true;
 
+     // 2. Preparar datos para el PDF provisional
     const datosParaPreview: CotizacionData = {
       numeroCotizacion: 'COT-PROVISIONAL',
       cliente: nombreCliente,
       fecha: this.fecha,
-      items: this.items.map(item => ({ ...item, descripcion: this.productoFormatter(item.descripcion) })),
+      items: this.items.map(item => ({...item, descripcion: this.productoFormatter(item.descripcion)})),
       subtotal: this.subtotal,
       igv: this.igv,
       total: this.total,
@@ -159,78 +161,78 @@ export class QuoteCreator implements OnInit {
       entregaEnObra: this.entregaEnObra
     };
 
-    await this.pdfService.cargarFirma();
-    const doc = this.pdfService.crearInstanciaPDF(datosParaPreview);
-    const pdfBlob = doc.output('blob');
+   // En la función revisarPDF...
 
-    const url = URL.createObjectURL(pdfBlob);
-    this.pdfPreviewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
-    this.isGeneratingPreview = false;
-    this.modalService.open(content, { size: 'lg', centered: true, scrollable: true });
+// 3. Crear el PDF y abrirlo en una nueva pestaña
+await this.pdfService.cargarFirma();
+const doc = this.pdfService.crearInstanciaPDF(datosParaPreview);
+
+// INICIO DE LA CORRECCIÓN
+const pdfBlob = doc.output('blob');
+const url = URL.createObjectURL(pdfBlob);
+window.open(url); // Abre la URL en una nueva pestaña
+// FIN DE LA CORRECIÓN
+
+// 4. Abrir el modal de confirmación...
+this.modalService.open(confirmationModal, { centered: true });
   }
 
-  // --- Generación de PDF y Guardado ---
-  // En quote-creator.ts
+  async generarYGuardarPDF(): Promise<void> {
+  try {
+    const nuevoNumeroCotizacion = await this.supabaseService.getNextCotizacionNumber();
+    const nombreCliente = this.clienteFormatter(this.cliente);
 
-    async generarPDF(): Promise<void> {
-    try {
-      // 1. Obtiene el número real
-      const nuevoNumeroCotizacion = await this.supabaseService.getNextCotizacionNumber();
-      const nombreCliente = this.clienteFormatter(this.cliente);
+    // 1. Prepara el objeto para GUARDAR en la base de datos (snake_case)
+    const cotizacionParaGuardar = {
+      numero_cotizacion: nuevoNumeroCotizacion,
+      fecha: this.fecha,
+      cliente: nombreCliente,
+      items: this.items.map(item => ({
+        descripcion: this.productoFormatter(item.descripcion),
+        unidad: item.unidad,
+        cantidad: item.cantidad,
+        precioUnitario: item.precioUnitario
+      })),
+      subtotal: this.subtotal,
+      igv: this.igv,
+      total: this.total,
+      incluir_igv: this.incluirIGV,
+      entrega_en_obra: this.entregaEnObra
+    };
 
-      // 2. Guarda en la base de datos
-      const cotizacionParaGuardar = {
-        numero_cotizacion: nuevoNumeroCotizacion,
-        fecha: this.fecha,
-        cliente: nombreCliente,
-        items: this.items.map(item => ({
-          descripcion: this.productoFormatter(item.descripcion),
-          unidad: item.unidad,
-          cantidad: item.cantidad,
-          precioUnitario: item.precioUnitario
-        })),
-        subtotal: this.subtotal,
-        igv: this.igv,
-        total: this.total,
-        incluir_igv: this.incluirIGV,
-        entrega_en_obra: this.entregaEnObra
-      };
+    const { error } = await this.supabaseService.supabase.from('cotizaciones').insert(cotizacionParaGuardar);
+    if (error) throw error;
 
-      const { error } = await this.supabaseService.supabase.from('cotizaciones').insert(cotizacionParaGuardar);
-      if (error) throw error;
+    // 2. Prepara el objeto para GENERAR el PDF (camelCase)
+    const datosParaPDF_final: CotizacionData = {
+      numeroCotizacion: nuevoNumeroCotizacion,
+      cliente: nombreCliente,
+      fecha: this.fecha,
+      items: this.items.map(item => ({...item, descripcion: this.productoFormatter(item.descripcion)})),
+      subtotal: this.subtotal,
+      igv: this.igv,
+      total: this.total,
+      incluirIGV: this.incluirIGV,
+      entregaEnObra: this.entregaEnObra
+    };
 
-      // 3. Genera y muestra el PDF FINAL
-      const datosParaPDF_final: CotizacionData = {
-  numeroCotizacion: nuevoNumeroCotizacion,
-  cliente: nombreCliente,
-  fecha: this.fecha,
-  items: this.items.map(item => ({ // <-- Creamos una lista limpia para el PDF
-    ...item, // Copiamos todas las propiedades originales (incluyendo el id)
-    descripcion: this.productoFormatter(item.descripcion) // Nos aseguramos de que la descripción sea un texto
-  })),
-  subtotal: this.subtotal,
-  igv: this.igv,
-  total: this.total,
-  incluirIGV: this.incluirIGV,
-  entregaEnObra: this.entregaEnObra
-};
+    const docFinal = this.pdfService.crearInstanciaPDF(datosParaPDF_final);
 
-      const docFinal = this.pdfService.crearInstanciaPDF(datosParaPDF_final);
-
-      if (navigator.share) {
-        const blob = docFinal.output('blob');
-        const file = new File([blob], `Cotizacion-${nuevoNumeroCotizacion}.pdf`, { type: 'application/pdf' });
-        await navigator.share({ files: [file], title: `Cotización ${nuevoNumeroCotizacion}` });
-      } else {
-        docFinal.output('dataurlnewwindow');
-      }
-
-      this.modalService.dismissAll();
-      this.toastService.show(`Cotización ${nuevoNumeroCotizacion} guardada.`, { classname: 'bg-success text-light' });
-
-    } catch (error: any) {
-      this.toastService.show('Error al guardar la cotización.', { classname: 'bg-danger text-light' });
-      console.error('Error:', error.message);
+    // 3. Decide si comparte o abre el PDF
+    if (navigator.share) {
+      const blob = docFinal.output('blob');
+      const file = new File([blob], `Cotizacion-${nuevoNumeroCotizacion}.pdf`, { type: 'application/pdf' });
+      await navigator.share({ files: [file], title: `Cotización ${nuevoNumeroCotizacion}` });
+    } else {
+      docFinal.output('dataurlnewwindow');
     }
+
+    this.modalService.dismissAll();
+    this.toastService.show(`Cotización ${nuevoNumeroCotizacion} guardada.`, { classname: 'bg-success text-light' });
+
+  } catch (error: any) {
+    this.toastService.show('Error al guardar la cotización.', { classname: 'bg-danger text-light' });
+    console.error('Error:', error.message);
   }
+}
 }

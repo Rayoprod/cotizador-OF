@@ -6,16 +6,6 @@
     </button>
   </div>
 
-  <div *ngIf="isLoading" class="text-center p-5">
-    <div class="spinner-border text-primary" role="status">
-      <span class="visually-hidden">Cargando...</span>
-    </div>
-  </div>
-
-  <div *ngIf="!isLoading && cotizaciones.length === 0" class="alert alert-info">
-    Aún no has guardado ninguna cotización en la base de datos.
-  </div>
-
   <div *ngIf="!isLoading && cotizaciones.length > 0" class="table-responsive">
     <table class="table table-striped table-hover align-middle">
       <thead class="table-light">
@@ -28,17 +18,28 @@
         </tr>
       </thead>
       <tbody>
-  <tr *ngFor="let cot of cotizaciones">
-    <td><strong>{{ cot.numero_cotizacion }}</strong></td>
-<td>{{ cot.cliente }}</td>    <td>{{ cot.fecha }}</td>
-    <td class="text-end">{{ cot.total | currency:'S/ ' }}</td>
-    <td class="text-center">
-      <button class="btn btn-sm btn-outline-primary" (click)="verPDF(cot)">
-        Ver PDF
-      </button>
-    </td>
-  </tr>
-</tbody>
+        <tr *ngFor="let cot of cotizaciones">
+          <td><strong>{{ cot.numero_cotizacion }}</strong></td>
+          <td>{{ cot.cliente }}</td>
+          <td>{{ cot.fecha }}</td>
+          <td class="text-end">{{ cot.total | currency:'S/ ' }}</td>
+          <td class="text-center">
+            <button class="btn btn-sm btn-outline-primary" (click)="revisarPDFHistorial(cot, confirmationModalHistorial)">
+              Ver PDF
+            </button>
+          </td>
+        </tr>
+      </tbody>
     </table>
   </div>
 </div>
+
+<ng-template #confirmationModalHistorial let-modal>
+  <div class="modal-body text-center p-4">
+    <h4 class="mb-3">La previsualización se abrió en una nueva pestaña.</h4>
+    <p>¿Deseas generar y compartir/descargar el PDF final?</p>
+    <button type="button" class="btn btn-success btn-lg mt-3" (click)="generarPDFDesdeHistorial()">
+      <i class="bi bi-check-circle-fill me-2"></i> Generar PDF Final
+    </button>
+  </div>
+</ng-template>

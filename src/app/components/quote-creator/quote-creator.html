@@ -16,17 +16,22 @@
         <div class="col-md-7 mb-3 mb-md-0">
           <label for="cliente" class="form-label">Cliente</label>
           <input
-  type="text"
-  class="form-control"
-  [(ngModel)]="cliente"
-  [ngbTypeahead]="searchClientes"
-  [resultFormatter]="clienteFormatter"
-  [inputFormatter]="clienteFormatter"
-  placeholder="Buscar cliente por nombre..."
-/>
+            type="text"
+            class="form-control"
+            [(ngModel)]="cliente"
+            [ngbTypeahead]="searchClientes"
+            [resultFormatter]="clienteFormatter"
+            [inputFormatter]="clienteFormatter"
+            placeholder="Buscar cliente por nombre..." />
+        </div>
         <div class="col-md-5">
           <label for="fecha" class="form-label">Fecha</label>
-          <input type="text" id="fecha" class="form-control" [(ngModel)]="fecha" placeholder="DD/MM/AAAA">
+          <input
+            type="text"
+            id="fecha"
+            class="form-control"
+            [(ngModel)]="fecha"
+            placeholder="DD/MM/AAAA">
         </div>
       </div>
 
@@ -39,8 +44,7 @@
         </div>
         <div class="col-md-6">
           <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" role="switch" id="entregaObraCheck"
-              [(ngModel)]="entregaEnObra">
+            <input class="form-check-input" type="checkbox" role="switch" id="entregaObraCheck" [(ngModel)]="entregaEnObra">
             <label class="form-check-label" for="entregaObraCheck">Entrega en Obra</label>
           </div>
         </div>
@@ -64,18 +68,20 @@
             <tr *ngFor="let item of items; let i = index" class="item-row">
               <th scope="row" class="item-number" data-label="#">{{ i + 1 }}</th>
               <td data-label="Descripción">
-                <input type="text" class="form-control" [(ngModel)]="item.descripcion" [ngbTypeahead]="searchProductos"
-                  [resultFormatter]="productoFormatter" [inputFormatter]="productoFormatter"
-                  (selectItem)="onProductSelect($event, item)" placeholder="Buscar producto..." />
+                <input
+                  type="text"
+                  class="form-control"
+                  [(ngModel)]="item.descripcion"
+                  [ngbTypeahead]="searchProductos"
+                  [resultFormatter]="productoFormatter"
+                  [inputFormatter]="productoFormatter"
+                  (selectItem)="onProductSelect($event, item)"
+                  placeholder="Buscar producto..." />
               </td>
-              <td data-label="Unidad"><input type="text" class="form-control" [(ngModel)]="item.unidad"
-                  placeholder="Und."></td>
-              <td data-label="Cantidad"><input type="number" class="form-control text-end" [(ngModel)]="item.cantidad"
-                  placeholder="Cantidad"></td>
-              <td data-label="P. Unitario"><input type="number" class="form-control text-end"
-                  [(ngModel)]="item.precioUnitario" placeholder="0.00"></td>
-              <td data-label="Total" class="text-end fw-bold">{{ ( (item.cantidad || 0) * (item.precioUnitario || 0)) |
-                currency:'S/ ' }}</td>
+              <td data-label="Unidad"><input type="text" class="form-control" [(ngModel)]="item.unidad" placeholder="Und."></td>
+              <td data-label="Cantidad"><input type="number" class="form-control text-end" [(ngModel)]="item.cantidad" placeholder="Cantidad"></td>
+              <td data-label="P. Unitario"><input type="number" class="form-control text-end" [(ngModel)]="item.precioUnitario" placeholder="0.00"></td>
+              <td data-label="Total" class="text-end fw-bold">{{ ((item.cantidad || 0) * (item.precioUnitario || 0)) | currency:'S/ ' }}</td>
               <td class="text-center">
                 <button class="btn btn-outline-danger btn-sm" (click)="removeItem(item.id)">
                   &times;
@@ -109,27 +115,21 @@
         </div>
       </div>
     </div>
+
     <div class="card-footer text-center p-3">
-  <button class="btn btn-primary btn-lg" (click)="previsualizarPDF(previewModal)" [disabled]="isGeneratingPreview">
-    <span *ngIf="isGeneratingPreview" class="spinner-border spinner-border-sm"></span>
-    <span *ngIf="!isGeneratingPreview">Previsualizar Cotización</span>
-  </button>
-</div>
+      <button class="btn btn-primary btn-lg" (click)="revisarPDF(confirmationModal)">
+        Revisar PDF
+      </button>
+    </div>
   </div>
 </div>
 
-<ng-template #previewModal let-modal>
-  <div class="modal-header">
-    <h4 class="modal-title">Previsualización</h4>
-    <button type="button" class="btn-close" (click)="modal.dismiss()"></button>
-  </div>
-  <div class="modal-body p-0" style="height: 70vh;">
-    <iframe *ngIf="pdfPreviewUrl" [src]="pdfPreviewUrl" width="100%" height="100%" style="border: none;"></iframe>
-  </div>
-  <div class="modal-footer justify-content-between">
-    <button type="button" class="btn btn-secondary" (click)="modal.dismiss()">Cancelar</button>
-    <button type="button" class="btn btn-success" (click)="generarPDF()">
-      <i class="bi bi-check-circle-fill me-2"></i> Guardar y Generar
+<ng-template #confirmationModal let-modal>
+  <div class="modal-body text-center p-4">
+    <h4 class="mb-3">La previsualización se abrió en una nueva pestaña.</h4>
+    <p>Una vez que hayas revisado el documento, puedes proceder a guardarlo.</p>
+    <button type="button" class="btn btn-success btn-lg mt-3" (click)="generarYGuardarPDF()">
+      <i class="bi bi-check-circle-fill me-2"></i> Guardar y Generar PDF Final
     </button>
   </div>
 </ng-template>
