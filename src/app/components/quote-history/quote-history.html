@@ -37,9 +37,11 @@
 <ng-template #confirmationModalHistorial let-modal>
   <div class="modal-body text-center p-4">
     <h4 class="mb-3">La previsualización se abrió en una nueva pestaña.</h4>
-    <p>¿Deseas generar y compartir/descargar el PDF final?</p>
+    <p>El documento ya está guardado. ¿Deseas realizar la acción final?</p>
+
     <button type="button" class="btn btn-success btn-lg mt-3" (click)="generarPDFDesdeHistorial()">
-      <i class="bi bi-check-circle-fill me-2"></i> Generar PDF Final
+      <i class="bi bi-check-circle-fill me-2"></i>
+      {{ isMobile() ? 'Compartir PDF' : 'Descargar PDF Final' }}
     </button>
   </div>
 </ng-template>

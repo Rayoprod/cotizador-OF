@@ -40,6 +40,11 @@ export class QuoteHistoryComponent implements OnInit {
     this.getCotizaciones();
   }
 
+  public isMobile(): boolean {
+    // navigator.share solo existe en dispositivos móviles compatibles
+    return !!navigator.share;
+  }
+  
   async getCotizaciones(): Promise<void> {
     this.isLoading = true;
     const data = await this.supabaseService.fetchCotizaciones();
